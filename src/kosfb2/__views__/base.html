@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ru" lang="ru" dir="ltr">
+
+
+<head>
+	{% block head %}{% endblock %}
+	<title>
+		{% block title %}{% endblock %}
+	</title>
+</head>
+
+<body>
+	<div class="wrapper">
+		<div class="table">
+			<div class="row">
+				<div class="leftframe">LeftFrame</div>
+				<div class="centerframe">
+					<h1 class="title">Каталог книг</h1>
+					<div class="separator"></div>
+	
+					<!-- Блок сообщений -->
+					<div class="message">
+						{% block message %}{% endblock %}
+					</div>
+					<div class="separator"></div>
+					
+					<!-- Блок загрузки новых книг -->
+					<div class="upload-book">
+						{% block uploadbook %}{% endblock %}
+					</div>
+					<div class="separator"></div>
+					
+					<!-- Блок поиска книг по ключевому слову в разных полях -->
+					<div class="find-book">
+						{% block findbook %}{% endblock %}
+					</div>
+					<div class="separator"></div>
+					
+					<!-- Блок группировки отображаемых книг -->
+					<div class="group-book">
+						{% block groupbook %}{% endblock %}
+					</div>
+					<div class="separator"></div>
+				
+					<!-- Блок переключения между страницами отображения списка книг -->
+					<div class="page-controller">
+						{% block pgctrl %}{% endblock %}
+					</div>
+					<div class="separator"></div>
+				
+					<!-- Блок вывода списка книг -->
+					<div class="show-book">
+						{% block showbook %}{% endblock %}
+					</div>
+					<div class="separator"></div>
+				</div>
+				<div class="rightframe">RightFrame</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

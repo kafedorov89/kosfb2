@@ -1,0 +1,139 @@
+h1 {
+    text-align: center;
+    color: #ff7800;;
+}
+
+html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        /*overflow: hidden;*/
+      }
+      
+html {
+       overflow-y: scroll;
+}
+
+.header {
+    text-align: center;
+    color: #ff7800;;
+}
+
+.title {
+	text-align: center;
+    color: #ff7800;;
+}
+
+.separator{
+	width: 100%;
+	height: 1px;
+	background-image: url("/images/separator.png");
+    background-repeat: repeat-x;
+}
+
+.wrapper{
+	position: relative; /* Относительное позиционирование */
+    background: #500000; /* Цвет фона */
+    width: 100%;
+	min-height: 100%;
+	height: 100%;
+	padding: 0px;
+}
+
+.table {
+	position: relative;
+	margin: 0 auto; /* Позиционирование в центре страницы */
+	width: 100%;
+	height: 100%;
+	display:table;
+	border: 1px solid; /* Параметры границы */
+	border-color: #000000; /*Цвет рамки*/
+    background: #715b1b; /* Цвет фона */
+    padding: 0px; /* Поля вокруг контейнера таблицы */
+}
+
+.row {
+	position: relative;
+	margin: 0 auto; /* Позиционирование в центре страницы */
+	display:table-row;
+	/*border: 1px solid; /* Параметры границы */
+	border-color: #000000; /*Цвет рамки*/
+    background: #00ffa4; /* Цвет фона строки таблицы */
+	padding: 0px; /* Поля вокруг текста */
+}
+
+#book-cover {
+	display:table-cell;
+	position: relative;
+	vertical-align: middle;
+	text-align: left;
+	background: #e8edaa; /* Цвет фона левого столбца таблицы */
+	padding: 10px; /* Поля вокруг текста */
+	width: 10%;
+}
+
+#book-text-desc {
+	display:table-cell;
+	position: relative;
+	vertical-align: middle;
+	text-align: left;
+	background: #ff7800; /* Цвет фона левого столбца таблицы */
+	padding: 10px; /* Поля вокруг текста */
+	width: 100%; /*Почему здесь нужно указывать 100% непонятно*/
+}
+
+#book-download{
+	display:table-cell;
+	position: relative;
+	vertical-align: middle;
+	text-align: center;
+	padding: 10px; /* Поля вокруг текста */
+	width: 100px;
+}
+
+.leftframe {
+	display:table-cell;
+	position: relative;
+	text-align: left;
+	background: #ff7800; /* Цвет фона левого столбца таблицы */
+	padding: 10px; /* Поля вокруг текста */
+	width: 10%;
+}
+
+.centerframe {
+	display:table-cell;
+	position: relative;
+	text-align: left;
+	background: #f0f9eb; /* Цвет фона центрального столбца таблицы */
+	padding: 10px; /* Поля вокруг текста */
+	width: 500px;
+}
+
+.rightframe {
+	display:table-cell;
+	position: relative;
+	text-align: left;
+	background: #ff7800; /* Цвет фона правого столбца таблицы */
+	padding: 10px; /* Поля вокруг текста */
+	width: 10%;
+}
+
+.pgnavbutton {
+	display:table-cell;
+	position: relative;
+	vertical-align: middle;
+	text-align: center;
+	padding: 10px; /* Поля вокруг текста */
+	width: 15%;
+	min-width: 120px;
+}
+
+#pgnavtext {
+	display:table-cell;
+	position: relative;
+	vertical-align: middle;
+	text-align: center;
+	padding: 10px; /* Поля вокруг текста */
+	min-width: 400px;
+	width: 1000px;
+}

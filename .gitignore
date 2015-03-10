@@ -52,3 +52,10 @@ docs/_build/
 
 # PyBuilder
 target/
+
+info/
+src/kosfb2/uploadedbook/
+src/kosfb2/preparedbook/
+.project
+.pydevproject
+.settings/
