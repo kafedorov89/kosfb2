@@ -1,0 +1,4 @@
+arch savename = Другое
+postfix = �е
+arch savename = Золя Эмиль - Воздержание.zip
+postfix = zip

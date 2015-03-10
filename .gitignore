@@ -59,3 +59,4 @@ src/kosfb2/preparedbook/
 .project
 .pydevproject
 .settings/
+src/kosfb2/__static__/

@@ -4,6 +4,7 @@ import shutil
 import uuid
 #import cherrypy
 from FileFinder import FileFinder
+import fb2tools
 
 class ErrorFileUploader(Exception):
     def __init__(self, value):
@@ -72,25 +73,14 @@ class FileUploader(object):
         uploadfiles = kwargs['files']
         print "uploadfiles = ", uploadfiles
 
-        try:
-            filecount = len(uploadfiles)
-        except TypeError:
-            print "Получен 1 файл"
-            file = uploadfiles
-
-            filename = os.path.join(heapfolder, file.filename)
-            print "filename for save = ", filename
-
-            with open(filename, 'wb') as f:
-                f.write(file.file.read())
-        else:
+        if type(uploadfiles).__name__ == 'list':
             print "Получено несколько файлов"
             for file in uploadfiles:
-                filename = os.path.join(heapfolder, file.filename)
-                print "filename for save = ", filename
-
-                with open(filename, 'wb') as f:
-                    f.write(file.file.read())
+                fb2tools.filesaver(heapfolder, file.filename, file.file)
+        else:
+            print "Получен 1 файл"
+            file = uploadfiles
+            fb2tools.filesaver(heapfolder, file.filename, file.file)
 
         #---------------------------------------------------------------------------------------------
 
