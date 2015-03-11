@@ -38,12 +38,14 @@ def safeextract(*args, **kwargs):
 
                 #filename -------------------------------------------------------------------------------
                 filename = infoitem.filename
-                #filename = filename.encode("utf-8", "fb2_replacer")
+                filename = fb2tools.decodestr(filename)
+
+
                 print "arch filename = ", filename
 
                 #savename --------------------------------------------------------------------------------
-                savename = filename.encode("utf-8", "fb2_replacer").split('\\')[-1]
-                savename = savename
+                #Получаем имя файла из пути к файлу внутри архива
+                savename = fb2tools.clearfilename(filename)
                 print "arch savename = ", savename
                 archlog.write("arch savename = {0}\n".format(savename))
 
@@ -52,7 +54,8 @@ def safeextract(*args, **kwargs):
                 archlog.write("postfix = {0}\n".format(postfix))
 
                 if postfix in ["fb2", "rar", "zip"]:
-                    fb2tools.filesaver(dest_dir, savename, arch.read(filename)) #Вот тут косяк!!!
+                    unpackedfile = arch.open(filename)
+                    fb2tools.filesaver(dest_dir, savename, unpackedfile)
                     '''
                     try:
                         fb2tools.filesaver(dest_dir, savename, arch.read(filename))

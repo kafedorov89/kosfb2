@@ -60,3 +60,6 @@ src/kosfb2/preparedbook/
 .pydevproject
 .settings/
 src/kosfb2/__static__/
+.DS_Store
+.directory
+.dropbox

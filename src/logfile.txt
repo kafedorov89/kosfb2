@@ -1,4 +1,2 @@
-arch savename = Другое
-postfix = �е
-arch savename = Золя Эмиль - Воздержание.zip
+arch savename = Declaration of Independence by United States.zip
 postfix = zip

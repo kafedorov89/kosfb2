@@ -66,9 +66,16 @@ def get_applications (mode, basename):
             {'tools.staticdir.on' : True,
              'tools.staticdir.dir' : 'covers'}
     }
-
     #Дополняем конфиг приложения описанием статических каталогов
     myapp.app.config.update(static_config)
+
+    encoding_config = {'tools.encode.on': True,
+                       'tools.encode.encoding': 'utf-8',
+                       'tools.decode.on': True }
+
+    #Дополняем конфиг приложения описанием кодировок
+    myapp.app.config.update(encoding_config)
+
     #cherrybase.config.update(static_config)
     myapp.tree.add ('/', webapp.BookShelf(), None) #Добавляем приложение на хост (Добавляем в корень, но можем и в любую необходимую поддиректорию)
 
