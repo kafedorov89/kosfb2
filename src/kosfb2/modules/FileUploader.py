@@ -76,11 +76,11 @@ class FileUploader(object):
         if type(uploadfiles).__name__ == 'list':
             print "Получено несколько файлов"
             for file in uploadfiles:
-                fb2tools.filesaver(heapfolder, file.filename, file.file)
+                fb2tools.filesaver(heapfolder, file.file, file.filename)
         else:
             print "Получен 1 файл"
             file = uploadfiles
-            fb2tools.filesaver(heapfolder, file.filename, file.file)
+            fb2tools.filesaver(heapfolder, file.file, file.filename)
 
         #---------------------------------------------------------------------------------------------
 

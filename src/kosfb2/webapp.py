@@ -83,7 +83,7 @@ class BookShelf(Base):
     @cherrypy.expose
     def uploadbook(self, *args, **kwargs):
         cherrypy.response.timeout = 3600
-
+        print "cherrypy.response.timeout = ", cherrypy.response.timeout
         uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
         #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
         #print "test uploadfile = ", uploadfile

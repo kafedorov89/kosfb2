@@ -4,6 +4,8 @@ import os
 import uuid
 import ntpath
 import chardet
+import rarfile
+import zipfile
 
 #Обработчик декодирования неправильных символов
 def replace_error_handler(error):
@@ -19,21 +21,16 @@ replace_spc_error_handler = lambda error: (u'_' * (error.end - error.start), err
 codecs.register_error("fb2_replacer", replace_error_handler)
 
 #Сохраняет переданный файл - file в нужном месте - savepath под нужным именем - filename
-def filesaver(savepath, filename, file):
+def filesaver(savepath, file, filename, Rename = True):
     print "filename = ", filename
-    newfilename = decodestr(filename)
-    print "decodefilename = ", newfilename
-    '''
-    try:
-        newfilename = filename.encode("utf-8", "fb2_replacer")
-        #newfilename = filename
-        print "Имя файла вполне себе нормальное"
-    except:
-        postfix = filename[-3:]
-        newfilename = "{0}.{1}".format(str(uuid.uuid1()), postfix)
-        print "Имя файла не удалось декодировать"
-    '''
+    if Rename:
+        prefix = str(uuid.uuid1())
+        postfix = filename.split(".")[-1]
+        newfilename = "{0}.{1}".format(prefix, postfix)
+    else:
+        newfilename = decodestr(filename)
 
+    print "newfilename = ", newfilename
 
     #savepath ----------------------------------------------------------------------------
     filepath = os.path.join(savepath, newfilename)
@@ -42,24 +39,89 @@ def filesaver(savepath, filename, file):
     with open(filepath, 'w') as f:
         f.write(file.read())
 
+def safeextract(*args, **kwargs):
+    source_filename = args[0]
+    dest_dir = args[1]
+    settype = args[2]
+    errorcount = 0
+    archtype = -1
+
+    with open('logfile.txt', "wb") as archlog:
+        print "source_filename = ", source_filename
+
+        if rarfile.is_rarfile(source_filename) or settype == 'rar':
+            print "RAR archive was found"
+            arch = rarfile.RarFile(source_filename, 'r')
+            archtype = 0
+        elif zipfile.is_zipfile(source_filename) or settype == 'zip':
+            print "ZIP archive was found"
+            arch = zipfile.ZipFile(source_filename, 'r')
+            archtype = 1
+        else:
+            #Тип архива не распознан
+            archtype = -1
+
+        #Выводим список файлов содержащихся в архиве
+        if archtype >= 0:
+
+            infolist = arch.infolist()
+
+            for infoitem in infolist:
+
+                #filename -------------------------------------------------------------------------------
+                filename = infoitem.filename
+                #filename = decodestr(filename) #Так не находит фалй в архиве
+
+
+                print "arch filename = ", filename
+
+                #savename --------------------------------------------------------------------------------
+                #Получаем имя файла из пути к файлу внутри архива
+                savename = clearfilename(filename)
+                #print "arch savename = ", savename
+                #archlog.write("arch savename = {0}\n".format(savename))
+
+                postfix = savename[-4:]
+                print "arch postfix = ", decodestr(postfix)
+                archlog.write("postfix = {0}\n".format(decodestr(postfix)))
+
+                if postfix in [".fb2", ".rar", ".zip"]:
+                    unpackedfile = arch.open(filename)
+                    filesaver(dest_dir, unpackedfile, postfix)
+                    '''
+                    try:
+                        fb2tools.filesaver(dest_dir, savename, arch.read(filename))
+                        archlog.write("Unpacked\n")
+                    except:
+                        errorcount = errorcount + 1
+                        archlog.write("Error when unpack\n")
+                        archlog.write("------------------------------------------------\n")
+                    '''
+            archlog.write("errorcount = {0}\n".format(errorcount))
+
+
+
 def clearfilename(path):
     head, tail = ntpath.split(path)
     return tail or ntpath.basename(head)
 
 def decodestr(str):
     try:
-        enc_detect = chardet.detect(str)
-        print enc_detect['confidence']
-        enc = enc_detect['encoding']
-        print enc
-
-        try:
-            result = str.decode(enc).encode('utf-8')
-        except UnicodeDecodeError, e:
-            print e
-        print "DECODED"
+        result = str.encode('utf-8')
     except:
-        #result = str.decode('windows-1251', 'fb2_replacer')
-        result = str
-        print "CLEAR STR"
+        try:
+            enc_detect = chardet.detect(str)
+            print enc_detect['confidence']
+            enc = enc_detect['encoding']
+            print enc
+
+            try:
+                result = str.decode(enc).encode('utf-8')
+            except UnicodeDecodeError, e:
+                print e
+            print "DECODED"
+        except:
+            #result = str.decode('windows-1251', 'fb2_replacer')
+            result = str
+            print "CLEAR STR"
     return result

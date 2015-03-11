@@ -1,2 +1,2 @@
-arch savename = Declaration of Independence by United States.zip
-postfix = zip
+postfix = .zip
+postfix = .zip
