@@ -31,22 +31,45 @@ class DBManager:
     def __init__(self, *args, **kwargs):
         pass
 
-    #Тестовый метод для проверки работоспособности очереди запросов к БД
-    def queue (self, task):
+    #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
+    def create_task(self, task_query):
+        @usedb
+        def task (self, db, query = task_query):
+            cursor = db.cursor()
+            cursor.execute(query)
+            cursor.close()
+        return task
+
+    #Метод добавления очереди запросов к БД
+    def put_task_to_queue(self, task):
         try:
-            cherrypy.engine.bg_tasks_queue.queue.put (task)
-        except Exception: # FIXME: Посмотреть какое исключение возникает в момент неудачноного добавления задачи в очередь
+            cherrypy.engine.bg_tasks_queue.queue.put(task)
+        except: # FIXME: Посмотреть какое исключение возникает в момент неудачноного добавления задачи в очередь
             print "Error when task put to queue"
         return 'Task was executed {} times'.format (self.excount)
 
-    #Можно ли добавить insert в ShortcutsMixin?
-    @usedb
-    def insert (self, db, query):
-        cursor = db.cursor()
-        query = query
-        cursor.execute(query)
-        cursor.close()
+    '''
+    Использовать основные 2 метода класса можно примерно так:
+    
+    query = create_query_<имя конкретного генератора запроса>() ()
+    task = create_task(query)
+    put_task_to_queue(task)
+    '''
 
+    #Генератор запроса для добавления одной строки в таблицу
+    def create_query_insert_row(self, *args, **kwargs):
+        table = kwargs['table']                 #Имя таблицы
+        fields = ', '.join(kwargs['fields'])    #Поля которым необходимо присвоить значения
+        values = ', '.join(kwargs['values'])    #Значения полей
+        print fields
+        print values
+        query_str = "INSERT INTO {0} ({1}) VALUES ({2})".format(table, fields, values)
+        return query_str
+
+    #Тестовый метод. Проверка connection usedb декоратора
+    @usedb
+    def testdb(self, db, *args, **kwargs):
+        print db
 
     def find_row(self, *args, **kwargs):
         itemlist = []
@@ -56,16 +79,7 @@ class DBManager:
         ##поиска в подстроке
         return itemlist
 
-    #Функции (запросы к БД)
-        #Дай мне все книги в названии которых есть текст (текст)
-        #Дай мне все книги в названии серии которых есть текст (текст)
-        #Дай мне все книги в названии издательской серии которых есть текст (текст)
-        #Дай мне все книги в имени автора (имя автора)
-        #Дай мне все книги по жанру (имя серии)
-        #Дай мне ссылку на файл книги (id книги)
-        #Дай мне ссылку на файл обложки книги (id книги)
-
-    def query_insert_row(self, *args, **kwargs):
+    def create_query_insert_row(self, *args, **kwargs):
         table = kwargs['table']
         fields = ', '.join(kwargs['fields'])
         values = ', '.join(kwargs['values'])
@@ -76,13 +90,14 @@ class DBManager:
 
     #Запиши всю информацию по книгам (книги)
     def insert_several_items(self, items = []):
-        #Запуск insert_one_book(myitems[i]) по списку переданных книг
+        #Запуск insert_item(myitems[i]) по списку переданных объектов
         #for item in myitems:
             #insert_one_book(item)
         pass
 
     #Проверяем есть ли значение value поля field в указанной таблице table
     #Существует?
+    @usedb
     def check_value_exist(self, table, field, value):
         select_query = "SELECT count(*) from {0} WHERE {1} = {2}".format(table, field, value)
         select_result = cursor.execute(select_query)
@@ -93,8 +108,9 @@ class DBManager:
         else:
             return False
 
-    #Проверяем больше ли значение value чем? то которое уже записано в таблицу table в записи с id_value
+    #Проверяем больше ли значение value чем? то которое уже записано в таблицу table в записи с полем id_name = id_value
     #Больше?
+    @usedb
     def check_value_bigger(self, table, field, value, id_name, id_value):
         select_query = "SELECT {1} from {0} WHERE {2} = {3}".format(table, field, id_name, id_value)
         select_result = cursor.execute(select_query)
@@ -111,10 +127,10 @@ class DBManager:
         newer_version = False
         exists = False
         #Проверь есть ли книга с таким id в БД
-        if(check_value_exist(cursor, 'book', "bookid", Book["ID"])):
+        if(check_value_exist('book', "bookid", Book["ID"])):
             exists = True
             #Проверь верcию книги, если книга уже есть в БД
-            if(check_value_bigger(cursor, 'book', 'version', Book["Version"], 'bookid', Book["ID"])):
+            if(check_value_bigger('book', 'version', Book["Version"], 'bookid', Book["ID"])):
                 newer_version = True
             else:
                 newer_version = False
@@ -155,7 +171,7 @@ class DBManager:
         #    ...             (Point(1.23, 4.56),))
         return "book was added to"
 
-    #Создай все таблицы для проекта kosfb2
+    #Создаем все таблицы для проекта kosfb2
     @usedb
     def init_mydb(self, db):
         #Создаем БД

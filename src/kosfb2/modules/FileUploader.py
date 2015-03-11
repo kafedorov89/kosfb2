@@ -4,6 +4,7 @@ import shutil
 import uuid
 #import cherrypy
 from FileFinder import FileFinder
+from FileParser import FileParser
 import fb2tools
 
 class ErrorFileUploader(Exception):
@@ -38,35 +39,17 @@ class FileUploader(object):
             shutil.rmtree(mainfolder)
             os.mkdir(mainfolder, 0777)
 
-        #Создаем временный каталог для загружаемых файлов
-        heapfolder = os.path.join(mainfolder, 'heap')
-        print "heapfolder = ", heapfolder
-        #Если временный каталог для текущего разбора еще не был создан, создаем его
-        if(not (os.path.exists(heapfolder))):
-            os.mkdir(heapfolder, 0777)
-        else:
-            shutil.rmtree(heapfolder)
-            os.mkdir(heapfolder, 0777)
+        #Создаем временный каталог для всех загружаемых файлов
+        heapfolder = fb2tools.create_tmp_folder(mainfolder, 'heap')
 
         #Создаем временный каталог для найденных fb2 файлов
-        fb2folder = os.path.join(mainfolder, 'fb2')
-        print "fb2folder = ", fb2folder
-        #Если временный каталог для текущего разбора еще не был создан, создаем его
-        if(not (os.path.exists(fb2folder))):
-            os.mkdir(fb2folder, 0777)
-        else:
-            shutil.rmtree(fb2folder)
-            os.mkdir(fb2folder, 0777)
+        fb2tools.create_tmp_folder(mainfolder, 'fb2')
 
         #Создаем временный каталог для распаковывания архивов
-        archfolder = os.path.join(mainfolder, 'arch')
-        print "archfolder = ", archfolder
-        #Если временный каталог для текущего разбора еще не был создан, создаем его
-        if(not (os.path.exists(archfolder))):
-            os.mkdir(archfolder, 0777)
-        else:
-            shutil.rmtree(archfolder)
-            os.mkdir(archfolder, 0777)
+        fb2tools.create_tmp_folder(mainfolder, 'arch')
+
+        #Создаем временный каталог для разобранных файлов fb2
+        fb2prepfolder = fb2tools.create_tmp_folder(mainfolder, 'fb2prep')
         #---------------------------------------------------------------------------------------------
 
         #Получаем ссылку на файлы полученные из WEB-формы
@@ -86,24 +69,30 @@ class FileUploader(object):
 
         #Запускаем модуль FileFinder и находим все fb2 файлы внутри архива
         ff = FileFinder(mainfolder)
-        ff.find(ff.heapfolder, 0)
+        if(ff.find(heapfolder, 0)):
+            #Если поиск отработал успешно Запускаем модуль FileParser по списку найденных fb2 фалов
+            fp = FileParser(fb2prepfolder)
 
-
-        '''
-        #Сохраняем zip-архив на сервер
-        if fileitem:
-            #Получаем чистое имя файла, чтобы не было никаких слэшей
-            filename = os.path.basename(fileitem)
-            open(os.path.join(self.heap_tmpfoldername, filename), 'wb').write(fileitem.file.read())
-            print 'The file \'{0}\' was uploaded successfully'.format(filename)
+            fb2folder = os.path.join(mainfolder, 'fb2')
+            fb2filelist = os.listdir(fb2folder)
+            for file in fb2filelist:
+                #Запускаем
+                pass
         else:
-            print 'No file was uploaded'
-        '''
+            # FIXME Надо бы добавить класс ошибок и raise вместо print
+            print "Ошибка. Модуль FileFinder некорректно завершил работу."
+
+        #if Добавление файлов произошло успешно :
+            #Удаляем временный каталог
 
 
-        #Запускаем модуль FileParser по списку найденных fb2 фалов
-            #Для каждой разобранной книги запускаем DBManager и записываем метаданные книги в БД
 
 if __name__ == "__main__":
-    fu = FileUploader()
-    fu.upload()
+    #fu = FileUploader()
+    #fu.upload()
+    mainfolder = '/home/kos/Dropbox/workspace/rconline/pylearn/kosfb2/src/kosfb2/uploadedbook/d45f8400-c7cb-11e4-afd7-2c27d7b02944'
+    fb2folder = os.path.join(mainfolder, 'fb2')
+    fb2filelist = os.listdir(fb2folder)
+    #print fb2filelist
+    for file in fb2filelist:
+        pass

@@ -1,2 +1,0 @@
-postfix = .fb2
-errorcount = 0

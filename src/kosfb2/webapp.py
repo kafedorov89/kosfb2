@@ -92,7 +92,7 @@ class BookShelf(Base):
 
         try:
             fu.upload(files = uploadfile)
-        except ErrorFileUploader:
+        except:
             self.message = u"Ошибка. Новые книги не добавлены в библиотеку."
         else:
             self.message = u"Новые книги добавлены в библиотеку."
@@ -235,9 +235,30 @@ class BookShelf(Base):
     #Тестовые методы
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
-    #Методы с JQuery
+
+
+    @cherrypy.expose
+    def testparserdb (self):
+        pf = FileParser('')
+        pf.testdb()
+
+    #query = create_query_insert_row()
+    #task = create_task(query)
+    #put_task_to_queue(task)
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
+
+    #Тестовый запрос к DBManager'у. Проверка connection usedb декоратора
+    @cherrypy.expose
+    def testdb (self):
+        dbm = DBManager(pool_name = '__package__')
+        dbm.testdb()
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
+    #Тестовый метод с JQuery
     @cherrypy.expose
     def jquery (self):
+        #Будет чуть попозже
         pass
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -248,6 +269,8 @@ class BookShelf(Base):
         cherrypy.engine.bg_tasks_queue.queue.put (self.tasktest)
         #cherrypy.engine.bg_tasks_queue.start () #Как стартует очередь без этой команды?
         return 'Task was executed {} times'.format (self.excount)
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     #Тестовое задание для очереди
     @cherrypy.expose
@@ -264,34 +287,36 @@ class BookShelf(Base):
         self.excount += 1
         cherrypy.engine.log ('Stopped task execution')
 
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
+
+    #Тестовый запрос к DBManager'у. Добавление одной книги
     @cherrypy.expose
     def addbook_test (self):
         cherrypy.engine.log ('Starting task execution')
 
         dbm = DBManager(pool_name = '__package__')
 
-        myquery = dbm.query_insert_row(
-                                        table = 'book',
-                                        fields = ['title',
-                                                  'encoding',
-                                                  'lang',
-                                                  'bookid',
-                                                  'version',
-                                                  'annotation',
-                                                  'coverfile',
-                                                  'coverexist',
-                                                  'zipfile'],
-                                        values = ['\'Тестовая книга\'',
-                                                  '\'utf-8\'',
-                                                  '\'ru\'',
-                                                  '\'тестовый ID\'',
-                                                  '\'1.0\'',
-                                                  '\'Тестовое описание\'',
-                                                  '\'путь к файлу обложки\'',
-                                                  '\'True\'',
-                                                  '\'Путь к архиву с файлом fb2\''
-                                                  ]
-                                        )
+        myquery = dbm.create_query_insert_row(table = 'book',
+                                              fields = ['title',
+                                                        'encoding',
+                                                        'lang',
+                                                        'bookid',
+                                                        'version',
+                                                        'annotation',
+                                                        'coverfile',
+                                                        'coverexist',
+                                                        'zipfile'],
+                                              values = ['\'Тестовая книга\'',
+                                                        '\'utf-8\'',
+                                                        '\'ru\'',
+                                                        '\'тестовый ID\'',
+                                                        '\'1.0\'',
+                                                        '\'Тестовое описание\'',
+                                                        '\'путь к файлу обложки\'',
+                                                        '\'True\'',
+                                                        '\'Путь к архиву с файлом fb2\''
+                                                        ]
+                                              )
         print "DBManager.query_insert_row() = ", myquery
 
         dbm.dbtask(query = myquery)

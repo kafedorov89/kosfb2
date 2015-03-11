@@ -9,29 +9,15 @@ import shutil
 import zipfile
 import os
 import uuid
+import DBManager
 
 #Тестовая функция для вывода полученных метаданных по книге
 class FileParser(object):
 
     def __init__(self, *args, **kwargs):
-        #Указываем общий рабочий каталог для временного хранения временных каталогов для каждого разбора файлов
-        self.foldername = kwargs['folderpath']
-        print "foldername = ", self.foldername
-
-        #Если общий каталог еще не был создан, создаем его
-        if(not (os.path.exists(self.foldername))):
-            os.mkdir(self.foldername, 0777)
-
-        #Получаем имя уникального временного каталога для хранения подготовленных и рабранных файлов книг с обложками
-        #По данному разбору
-        tmpname = str(uuid.uuid1())
-
-        self.tmpfoldername = os.path.join(self.foldername, tmpname)
-        print "self.tmpfoldername = ", self.tmpfoldername
-
-        #Если временный каталог для текущего разбора еще не был создан, создаем его
-        if(not (os.path.exists(self.tmpfoldername))):
-            os.mkdir(self.tmpfoldername, 0777)
+        #Указываем общий рабочий каталог для хранения временных каталогов для каждого разбора файлов
+        self.mainfolder = args[0]
+        print "foldername = ", self.mainfolder
 
     def show_book_info(self, Book):
         print Book
@@ -53,6 +39,7 @@ class FileParser(object):
         print "filename = ", filename
         book = LX.parse(filename, myparser)
         print "Кодировка книги: ", book.docinfo.encoding
+        # FIXME Добавить использование кодировки при получении мета-данных из книги
         Book["Encoding"] = book.docinfo.encoding
         #--------------------------------------------------------------------------------------------------------
 
@@ -284,21 +271,6 @@ class FileParser(object):
 
         return Book #Возвращаем готовую для экспорта в БД книгу со всеми полями
 
-    def create_uuid_folder(self):
-        #Получаем имя уникального временного каталога для хранения подготовленных и рабранных файлов книг с обложками
-        #По данному разбору
-        tmpname = str(uuid.uuid1())
-
-        self.tmpfoldername = os.path.join(self.foldername, tmpname)
-        print "self.tmpfoldername = ", self.tmpfoldername
-
-        #Если временный каталог для текущего разбора еще не был создан, создаем его
-        if(not (os.path.exists(self.tmpfoldername))):
-            os.mkdir(self.tmpfoldername, 0777)
-
-    def remove_uuid_folder(self):
-        pass
-
     def several_book_parser(self, derictory_name):
         #derictory_name - каталог с файлами fb2 (по плану это ../uploadedbooks/fb2_<UUID>)
 
@@ -314,6 +286,10 @@ class FileParser(object):
             #bookfile = '*.fb2' #Сюда передаем путь к файлу книги
             #Books.append(self.one_book_parser(bookfile)) #Добавляем информацию о новой распарсенной книге в массив
             #Потом нужно заменить укладку в массив на укладку в БД напрямую
+
+    def testdb(self):
+        dbm = DBManager.DBManager()
+        dbm.testdb()
 
     def test(self):
         #bookfile = '/home/kos/Dropbox/workspace/rconline/pylearn/kosfb2/info/books/M/Mann Thomas - Der kleine Herr Friedemann.fb2' # For Linux
