@@ -4,20 +4,6 @@
 import cherrypy
 from cherrybase import db #Нужно ли импортировать db чтобы работать с @cherrybase.db.use_db?
 
-'''
-def chbasedb(*args, **kwargs):
-    db_decorator = db.use_db(*args, **kwargs) #Здесь важно создавать декоратор от того имени пула, которое было передано при выполнении db.auto_config()
-    return db_decorator
-'''
-'''
-def usedb(*args, **kwargs):
-    pool_name = __name__.rpartition('.')[0]
-    print "pool_name = ", pool_name
-
-    db_decorator = db.use_db(pool_name, *args, **kwargs) #Здесь важно создавать декоратор от того имени пула, которое было передано при выполнении db.auto_config()
-    return db_decorator
-'''
-
 #pool_name = __package__
 pool_name = __name__.partition('.')[0]
 print "pool_name = ", pool_name
