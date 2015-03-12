@@ -21,9 +21,9 @@ usedb = db.use_db(pool_name)
 class DBManager:
     def __init__(self, *args, **kwargs):
         self.taskqueue = kwargs['taskqueue']
-        #self.readylist = {}
-        #self.result = {}
-        self.result = []
+        self.readylist = {}
+        self.result = {}
+        #self.result = []
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -37,13 +37,13 @@ class DBManager:
         print "self.taskqueue = ", self.taskqueue
 
         #cherrypy.engine.bg_tasks_queue.put(mytask)
-        self.taskqueue.put(mytask)
-        return True
-        '''
+        #self.taskqueue.put(mytask)
+        #return True
+
         try:
             #self.readylist[taskuid] = False
             #task()
-            #cherrypy.engine.bg_tasks_queue.queue.put(task) #В очередь нормально не кладется
+            #cherrypy.engine.bg_tasks_queue.queue.put(task) #В очередь нормально не кладется (А какого хрена тут дополнительное .queue)
             self.taskqueue.put(mytask)
 
             #while not self.readylist[taskuid]:
@@ -52,7 +52,7 @@ class DBManager:
         except: # FIXME: Посмотреть какое исключение возникает в момент неудачноного добавления задачи в очередь
             return False
             print "Error when task put to queue"
-        '''
+
 
     #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
     def create_task(self, query, taskuid):
@@ -69,12 +69,12 @@ class DBManager:
         print 'query in task = ', query
         dbcursor = db.cursor()
         dbcursor.execute(query)
-        self.result = 1
+        #self.result = 1
         #self.result = dbcursor.fetchall()
-        #self.result[taskuid] = dbcursor.fetchall()
+        self.result[taskuid] = dbcursor.fetchall()
         dbcursor.close()
         time.sleep (3)
-        #self.readylist[taskuid] = True
+        self.readylist[taskuid] = True
         #return True
 
     '''
@@ -150,7 +150,10 @@ class DBManager:
         task = self.create_task(query, taskuid)
         if self.put_task_to_queue(task, taskuid):
             while True:
-                print self.result
+                try:
+                    print self.result[taskuid]
+                except:
+                    pass
                 time.sleep (3)
             #return self.result[taskuid]
 
