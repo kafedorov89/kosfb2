@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 #import psycopg2
-#import cherrypy
+import cherrypy
 from cherrybase import db #Нужно ли импортировать db чтобы работать с @cherrybase.db.use_db?
 import cherrybase
+import uuid
 #import functools
 
 #pool_name = __package__
@@ -38,32 +39,9 @@ class DBManager:
 
     #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
     def create_task(self, query):
-        def task(self, *args, **kwargs):
+        def task(*args, **kwargs):
             return self.easy_task(sqlquery = query)
         return task
-
-        '''
-        #tasktype = 0 - SELECT;
-        #           1 - INSERT;
-        #           2 - UPDATE; #Пока не реализовано
-
-        if tasktype == 0: #SELECT
-            @usedb
-            def select_task (self, db, *args, **kwargs):
-                dbcursor = db.select_all(query)
-                result = dbcursor.fetchall()
-                dbcursor.close()
-                return result
-            return select_task
-        elif tasktype == 1: #INSERT
-            @usedb
-            def insert_task (self, db, *args, **kwargs):
-                dbcursor = db.cursor()
-                result = dbcursor.execute(query)
-                dbcursor.close()
-
-            return insert_task
-        '''
 
 
     @usedb
@@ -74,6 +52,7 @@ class DBManager:
         dbcursor = db.cursor()
         dbcursor.execute(query)
         result = dbcursor.fetchall()
+        #self.result = result
         dbcursor.close()
         return result
 
@@ -144,12 +123,8 @@ class DBManager:
 
         query = self.create_query_find_rows(keyword = keyword, field = field, table = 'book')
         print 'query = ', query
+
         #taskuid = str(uuid.uuid1())
-
-        #self.task = self.create_task(query, 0)
-        #result = self.task()
-
-        #result = self.easy_task(query)
 
         task = self.create_task(query)
         result = task()
@@ -163,7 +138,6 @@ class DBManager:
 
         #self.put_task_to_queue(task)
         #return self.result
-
 
         #if self.put_task_to_queue(task):
         #    return self.result
