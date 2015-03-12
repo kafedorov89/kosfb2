@@ -45,4 +45,3 @@ if __name__ == '__main__':
         cherrypy.config ['daemon.on'] = True
 
     server.start ()
-

@@ -28,7 +28,7 @@ def get_applications (mode, basename):
     myapp = cherrybase.Application (name = __package__,
                                     vhosts = ['127.0.0.1:3030', 'kosfb2:3030'],
                                     config = config_file,
-                                    routes = [('/', mywebapp.BookShelf(), None)]
+                                    routes = [('/', webapp.BookShelf(), None)]
                                     
     '''
 

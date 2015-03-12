@@ -3,13 +3,14 @@
 import cherrypy
 import cgi
 import tempfile
-import cherrybase
+#import cherrybase
 import jinja2
 import os
 import math
 import time
-from cherrybase import db
+#from cherrybase import db
 from modules import FileUploader, DBManager, FileParser
+#import kosfb2.modules
 
 print cherrypy.engine.state
 
@@ -236,10 +237,9 @@ class BookShelf(Base):
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
-
     @cherrypy.expose
     def testdb_in_FileParser (self):
-        pf = FileParser('')
+        pf = FileParser.FileParser('')
         pf.testdb()
 
     #query = create_query_insert_row()
@@ -257,7 +257,7 @@ class BookShelf(Base):
     #Тестовый запрос к DBManager'у. Проверка идеи с конструктором задач для очереди
     @cherrypy.expose
     def test_find_books(self):
-        dbm = DBManager.DBManager()
+        dbm = DBManager.DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
         books = dbm.find_books(field = 'title', keyword = u'Тестовая книга для поиска')
 
         print 'type(books) = ', type(books).__name__
@@ -275,7 +275,6 @@ class BookShelf(Base):
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
-    '''
     #Тестовый метод для проверки работоспособности очереди запросов к БД
     @cherrypy.expose
     def queue (self):
@@ -287,7 +286,7 @@ class BookShelf(Base):
 
     #Тестовое задание для очереди
     @cherrypy.expose
-    @usedb
+    #@usedb
     def tasktest (self, db):
         print db
         cherrypy.engine.log ('Starting task execution')
@@ -299,7 +298,6 @@ class BookShelf(Base):
         time.sleep (3)
         self.excount += 1
         cherrypy.engine.log ('Stopped task execution')
-    '''
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 

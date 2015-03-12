@@ -2,12 +2,17 @@
 
 #import psycopg2
 import cherrypy
-from cherrybase import db #Нужно ли импортировать db чтобы работать с @cherrybase.db.use_db?
 import cherrybase
+#from cherrybase import *
+from cherrybase import plugins
+from cherrybase import db #Нужно ли импортировать db чтобы работать с @cherrybase.db.use_db?
 import uuid
+import time
 #import functools
 
 #pool_name = __package__
+#cherrypy.engine.bg_tasks_queue = plugins.TasksQueue (cherrypy.engine)
+
 pool_name = __name__.partition('.')[0]
 print "pool_name = ", pool_name
 print "DBManager - pool_name = ", pool_name
@@ -15,8 +20,10 @@ usedb = db.use_db(pool_name)
 
 class DBManager:
     def __init__(self, *args, **kwargs):
-        self.readylist = {}
-        self.result = {}
+        self.taskqueue = kwargs['taskqueue']
+        #self.readylist = {}
+        #self.result = {}
+        self.result = []
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -25,17 +32,27 @@ class DBManager:
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     #Метод добавления задач очереди запросов к БД
-    def put_task_to_queue(self, task, taskuid):
+    def put_task_to_queue(self, mytask, taskuid):
+        #print "cherrypy.engine.bg_tasks_queue = ", cherrypy.engine.bg_tasks_queue
+        print "self.taskqueue = ", self.taskqueue
+
+        #cherrypy.engine.bg_tasks_queue.put(mytask)
+        self.taskqueue.put(mytask)
+        return True
+        '''
         try:
-            self.readylist[taskuid] = False
-            cherrypy.engine.bg_tasks_queue.queue.put(task) #В очередь нормально не кладется
-            while not self.readylist[taskuid]:
-                pass
+            #self.readylist[taskuid] = False
+            #task()
+            #cherrypy.engine.bg_tasks_queue.queue.put(task) #В очередь нормально не кладется
+            self.taskqueue.put(mytask)
+
+            #while not self.readylist[taskuid]:
+                #pass
             return True
         except: # FIXME: Посмотреть какое исключение возникает в момент неудачноного добавления задачи в очередь
             return False
             print "Error when task put to queue"
-
+        '''
 
     #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
     def create_task(self, query, taskuid):
@@ -52,9 +69,12 @@ class DBManager:
         print 'query in task = ', query
         dbcursor = db.cursor()
         dbcursor.execute(query)
-        self.result[taskuid] = dbcursor.fetchall()
+        self.result = 1
+        #self.result = dbcursor.fetchall()
+        #self.result[taskuid] = dbcursor.fetchall()
         dbcursor.close()
-        self.readylist[taskuid] = True
+        time.sleep (3)
+        #self.readylist[taskuid] = True
         #return True
 
     '''
@@ -129,7 +149,10 @@ class DBManager:
 
         task = self.create_task(query, taskuid)
         if self.put_task_to_queue(task, taskuid):
-            return self.result[taskuid]
+            while True:
+                print self.result
+                time.sleep (3)
+            #return self.result[taskuid]
 
         #if self.put_task_to_queue(task):
         #    return self.result
