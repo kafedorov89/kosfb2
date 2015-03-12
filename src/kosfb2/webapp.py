@@ -3,13 +3,13 @@
 import cherrypy
 import cgi
 import tempfile
-#import cherrybase
+import cherrybase
 import jinja2
 import os
 import math
 import time
 from cherrybase import db
-from modules import *
+from modules import FileUploader, DBManager, FileParser
 
 print cherrypy.engine.state
 
@@ -88,7 +88,7 @@ class BookShelf(Base):
         #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
         #print "test uploadfile = ", uploadfile
 
-        fu = FileUploader(folderpath = os.path.join('kosfb2', 'uploadedbook'))
+        fu = FileUploader.FileUploader(folderpath = os.path.join('kosfb2', 'uploadedbook'))
 
         try:
             fu.upload(files = uploadfile)
@@ -238,7 +238,7 @@ class BookShelf(Base):
 
 
     @cherrypy.expose
-    def testparserdb (self):
+    def testdb_in_FileParser (self):
         pf = FileParser('')
         pf.testdb()
 
@@ -251,8 +251,19 @@ class BookShelf(Base):
     #Тестовый запрос к DBManager'у. Проверка connection usedb декоратора
     @cherrypy.expose
     def testdb (self):
-        dbm = DBManager(pool_name = '__package__')
+        dbm = DBManager.DBManager()
         dbm.testdb()
+
+    #Тестовый запрос к DBManager'у. Проверка идеи с конструктором задач для очереди
+    @cherrypy.expose
+    def test_find_books(self):
+        dbm = DBManager.DBManager()
+        books = dbm.find_books(field = 'title', keyword = u'Тестовая книга для поиска')
+
+        print 'type(books) = ', type(books).__name__
+
+        for book in books:
+            print book
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
     #Тестовый метод с JQuery
@@ -263,6 +274,7 @@ class BookShelf(Base):
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
+    '''
     #Тестовый метод для проверки работоспособности очереди запросов к БД
     @cherrypy.expose
     def queue (self):
@@ -286,6 +298,7 @@ class BookShelf(Base):
         time.sleep (3)
         self.excount += 1
         cherrypy.engine.log ('Stopped task execution')
+    '''
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -306,15 +319,15 @@ class BookShelf(Base):
                                                         'coverfile',
                                                         'coverexist',
                                                         'zipfile'],
-                                              values = ['\'Тестовая книга\'',
-                                                        '\'utf-8\'',
-                                                        '\'ru\'',
-                                                        '\'тестовый ID\'',
-                                                        '\'1.0\'',
-                                                        '\'Тестовое описание\'',
-                                                        '\'путь к файлу обложки\'',
-                                                        '\'True\'',
-                                                        '\'Путь к архиву с файлом fb2\''
+                                              values = [u'\'Тестовая книга\'',
+                                                        u'\'utf-8\'',
+                                                        u'\'ru\'',
+                                                        u'\'тестовый ID\'',
+                                                        u'\'1.0\'',
+                                                        u'\'Тестовое описание\'',
+                                                        u'\'путь к файлу обложки\'',
+                                                        u'\'True\'',
+                                                        u'\'Путь к архиву с файлом fb2\''
                                                         ]
                                               )
         print "DBManager.query_insert_row() = ", myquery

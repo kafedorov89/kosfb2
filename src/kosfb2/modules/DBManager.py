@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 
 #import psycopg2
-import cherrypy
+#import cherrypy
 from cherrybase import db #Нужно ли импортировать db чтобы работать с @cherrybase.db.use_db?
+import cherrybase
+#import functools
 
 #pool_name = __package__
 pool_name = __name__.partition('.')[0]
 print "pool_name = ", pool_name
-
-
 print "DBManager - pool_name = ", pool_name
-
 usedb = db.use_db(pool_name)
 
 class DBManager:
     def __init__(self, *args, **kwargs):
-        pass
+        self.result = {}
+        self.blocked = False
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -23,22 +23,71 @@ class DBManager:
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
-    #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
-    def create_task(self, task_query):
-        @usedb
-        def task (self, db, query = task_query):
-            cursor = db.cursor()
-            cursor.execute(query)
-            cursor.close()
-        return task
-
     #Метод добавления задач очереди запросов к БД
     def put_task_to_queue(self, task):
         try:
+            self.blocked = True
             cherrypy.engine.bg_tasks_queue.queue.put(task)
+            while self.blocked:
+                pass
+            return True
         except: # FIXME: Посмотреть какое исключение возникает в момент неудачноного добавления задачи в очередь
+            return False
             print "Error when task put to queue"
-        return 'Task was executed {} times'.format (self.excount)
+
+
+    #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
+    def create_task(self, query):
+        def task(self, *args, **kwargs):
+            return self.easy_task(sqlquery = query)
+        return task
+
+        '''
+        #tasktype = 0 - SELECT;
+        #           1 - INSERT;
+        #           2 - UPDATE; #Пока не реализовано
+
+        if tasktype == 0: #SELECT
+            @usedb
+            def select_task (self, db, *args, **kwargs):
+                dbcursor = db.select_all(query)
+                result = dbcursor.fetchall()
+                dbcursor.close()
+                return result
+            return select_task
+        elif tasktype == 1: #INSERT
+            @usedb
+            def insert_task (self, db, *args, **kwargs):
+                dbcursor = db.cursor()
+                result = dbcursor.execute(query)
+                dbcursor.close()
+
+            return insert_task
+        '''
+
+
+    @usedb
+    def easy_task (self, db, *args, **kwargs):
+        #query = args[0]
+        query = kwargs['sqlquery']
+        print 'query in task = ', query
+        dbcursor = db.cursor()
+        dbcursor.execute(query)
+        result = dbcursor.fetchall()
+        dbcursor.close()
+        return result
+
+    '''
+    @usedb
+    def task(self, db, selectquery):
+        cursor = db.cursor()
+        cursor = db.select_all(selectquery)
+        result = dbcursor.fetchall()
+        result = cursor
+        cursor.close()
+
+        return result
+    '''
 
     '''
     Использовать основные 2 метода класса можно примерно так:
@@ -47,30 +96,81 @@ class DBManager:
     task = create_task(query)
     put_task_to_queue(task)
     '''
-
-    #Генератор SQL-запроса для добавления одной строки в таблицу
-    def create_query_insert_row(self, *args, **kwargs):
-        table = kwargs['table']                 #Имя таблицы
-        fields = ', '.join(kwargs['fields'])    #Поля которым необходимо присвоить значения
-        values = ', '.join(kwargs['values'])    #Значения полей
-        print fields
-        print values
-        query_str = "INSERT INTO {0} ({1}) VALUES ({2})".format(table, fields, values)
-        return query_str
-
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     #Методы работы с книгами
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
+        #Добавление новой книги
 
-    #
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
 
+    #Запись информации по одной книге
+    def add_one_book(self, Book):
+        newer_version = False
+        exists = False
+        #Проверь есть ли книга с таким id в БД
+        if(self.check_value_exist('book', "bookid", Book["ID"])):
+            exists = True
+            #Проверь верcию книги, если книга уже есть в БД
+            if(self.check_value_bigger('book', 'version', Book["Version"], 'bookid', Book["ID"])):
+                newer_version = True
+            else:
+                newer_version = False
+        else:
+            exists = False
+
+        #Добавь мета-данные книги в БД, если ее нет в базе, или книга имеет более новую версию чем существующая в БД
+        if (not exists) or newer_version:
+            pass
+            #Формируем запрос к БД
+
+        #cur.execute("INSERT INTO book (apoint) VALUES (%s)",
+        #    ...             (Point(1.23, 4.56),))
+        #return "book was added to"
 
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
+        #Поиск книг по заданным критериям
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
+
+    #Поиск книг
+    def find_books(self, *args, **kwargs):
+        field = kwargs['field'] #Поле книги по которому будем искать книгу
+        keyword = kwargs['keyword'] #Значение поля
+
+        query = self.create_query_find_rows(keyword = keyword, field = field, table = 'book')
+        print 'query = ', query
+        #taskuid = str(uuid.uuid1())
+
+        #self.task = self.create_task(query, 0)
+        #result = self.task()
+
+        #result = self.easy_task(query)
+
+        task = self.create_task(query)
+        result = task()
+
+        return result
+
+        #if self.put_task_to_queue(task):
+        #    return self.result
+        #else:
+        #    return {} # или []
+
+        #self.put_task_to_queue(task)
+        #return self.result
+
+
+        #if self.put_task_to_queue(task):
+        #    return self.result
+        #else:
+        #    return {} # или []
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -80,43 +180,12 @@ class DBManager:
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-    #Тестовый метод. Проверка connection usedb декоратора
-    @usedb
-    def testdb(self, db, *args, **kwargs):
-        print db
-
-    def find_row(self, *args, **kwargs):
-        itemlist = []
-
-        #Делаем запрос к БД по заданным параметрам
-        ##группировки
-        ##поиска в подстроке
-        return itemlist
-
-    def create_query_insert_row(self, *args, **kwargs):
-        table = kwargs['table']
-        fields = ', '.join(kwargs['fields'])
-        values = ', '.join(kwargs['values'])
-        print fields
-        print values
-        query_str = "INSERT INTO {0} ({1}) VALUES ({2})".format(table, fields, values)
-        return query_str
-
-    #Запиши всю информацию по книгам (книги)
-    def insert_several_items(self, items = []):
-        #Запуск insert_item(myitems[i]) по списку переданных объектов
-        #for item in myitems:
-            #insert_one_book(item)
-        pass
-
     #Проверяем есть ли значение value поля field в указанной таблице table
     #Существует?
     @usedb
-    def check_value_exist(self, table, field, value):
+    def check_value_exist(self, db, table, field, value):
         select_query = "SELECT count(*) from {0} WHERE {1} = {2}".format(table, field, value)
-        select_result = cursor.execute(select_query)
-        cursor.close()
+        select_result = db.select_all(select_query)
 
         if int(select_result['count']) > 0:
             return True
@@ -126,65 +195,50 @@ class DBManager:
     #Проверяем больше ли значение value чем? то которое уже записано в таблицу table в записи с полем id_name = id_value
     #Больше?
     @usedb
-    def check_value_bigger(self, table, field, value, id_name, id_value):
+    def check_value_bigger(self, db, table, field, value, id_name, id_value):
         select_query = "SELECT {1} from {0} WHERE {2} = {3}".format(table, field, id_name, id_value)
-        select_result = cursor.execute(select_query)
-        cursor.close()
+        select_result = db.select_all(select_query)
 
         if value > float(select_result[field]):
             return True
         else:
             return False
 
-    #Запиши всю информацию по одной книге (книга)
-    def insert_one_book(self, Book):
+    #Генератор SQL-запроса для добавления одной строки с полями fields и значениями values  в таблицу table
+    def create_query_insert_row(self, *args, **kwargs):
+        table = kwargs['table']                 #Имя таблицы
+        fields = ', '.join(kwargs['fields'])    #Поля которым необходимо присвоить значения
+        values = ', '.join(kwargs['values'])    #Значения полей
+        #print fields
+        #print values
+        query_str = "INSERT INTO {0} ({1}) VALUES ({2})".format(table, fields, values)
+        return query_str
 
-        newer_version = False
-        exists = False
-        #Проверь есть ли книга с таким id в БД
-        if(check_value_exist('book', "bookid", Book["ID"])):
-            exists = True
-            #Проверь верcию книги, если книга уже есть в БД
-            if(check_value_bigger('book', 'version', Book["Version"], 'bookid', Book["ID"])):
-                newer_version = True
-            else:
-                newer_version = False
+    #Генератор SQL-запроса для поиска подстроки keyword в поле field в таблице table c необязательным упорядочиванием по orderfield
+    def create_query_find_rows(self, *args, **kwargs):
+        #Если orderfield не передано или пусто то используем сортировку по алфавиту
+        keyword = kwargs['keyword']
+        field = kwargs['field']
+        table = kwargs['table']
+
+        try:
+            orderfield = kwargs['orderfield']
+            useorder = True
+        except:
+            useorder = False
+
+        if not useorder:
+            query_str = u'SELECT * FROM {0} WHERE {1} LIKE \'%{2}%\''.format(table, field, keyword)
         else:
-            exists = False
+            query_str = u'SELECT * FROM {0} WHERE {1} LIKE \'%{2}%\' ORDER BY {3}'.format(table, field, keyword, orderfield)
+        return query_str
 
-        #Добавь мета-данные книги в БД, если ее нет в базе, или книга имеет более новую версию чем существующая в БД
-        if (not exists) or newer_version:
-            #Формируем запрос к БД
-            '''
-            Book["Lang"]
-            
-            for sequence in Book["Sequences"]: 
-                sequence["Name"]
-                sequence["Volume"]
-            
-            for pubsequence in Book["PubSequences"]: 
-                pubsequence["Name"]
-                pubsequence["Volume"]
-            
-            Book["Publisher"]
-            Book["ID"]
-            Book["Version"]
-            Book["Title"]
-            Book["Genres"]
-            Book["Annotation"]
-            Book["Authors"]
-                Author['FirstName']
-                Author['LastName']
-                Author['MiddleName']
-                Author['NickName']
-            Book["CoverFile"]
-            Book["CoverExist"]
-            Book["ZipFile"]
-            '''
-
-        #cur.execute("INSERT INTO book (apoint) VALUES (%s)",
-        #    ...             (Point(1.23, 4.56),))
-        return "book was added to"
+    #Запиши всю информацию по книгам (книги)
+    def insert_several_items(self, items = []):
+        #Запуск insert_item(myitems[i]) по списку переданных объектов
+        #for item in myitems:
+            #insert_one_book(item)
+        pass
 
     #Создаем все таблицы для проекта kosfb2
     @usedb
@@ -194,7 +248,7 @@ class DBManager:
         #Задаем права доступа пользователя
 
         #Автор (пополняемый словарь)
-        create_author = "DROP TABLE IF EXISTS author;" + \
+        create_author = u"DROP TABLE IF EXISTS author;" + \
                 "CREATE TABLE author (" + \
                 "uid SERIAL PRIMARY KEY," + \
                 "firstname varchar(40) NOT NULL," + \
@@ -205,7 +259,7 @@ class DBManager:
                 ");"
 
         #Книга (основной объект)
-        create_book = "DROP TABLE IF EXISTS book;" + \
+        create_book = u"DROP TABLE IF EXISTS book;" + \
                 "CREATE TABLE book (" + \
                 "uid SERIAL PRIMARY KEY," + \
                 "title varchar(300) NOT NULL," + \
@@ -220,7 +274,7 @@ class DBManager:
                 ");"
 
         #Жанр (пополняемый словарь)
-        create_genre = "DROP TABLE IF EXISTS genre;" + \
+        create_genre = u"DROP TABLE IF EXISTS genre;" + \
                 "CREATE TABLE genre (" + \
                 "uid SERIAL PRIMARY KEY," + \
                 "genrename integer NOT NULL," + \
@@ -228,7 +282,7 @@ class DBManager:
                 ");"
 
         #Книга(m) - Автор(m)
-        create_bookauthor = "DROP TABLE IF EXISTS bookauthor;" + \
+        create_bookauthor = u"DROP TABLE IF EXISTS bookauthor;" + \
                 "CREATE TABLE bookauthor (" + \
                 "uid SERIAL PRIMARY KEY," + \
                 "bookid integer NOT NULL," + \
@@ -236,7 +290,7 @@ class DBManager:
                 ");"
 
         #Книга(m) - Жанр(m)
-        create_bookgenre = "DROP TABLE IF EXISTS bookgenre;" + \
+        create_bookgenre = u"DROP TABLE IF EXISTS bookgenre;" + \
                 "CREATE TABLE bookgenre (" + \
                 "uid SERIAL PRIMARY KEY," + \
                 "bookid integer NOT NULL," + \
@@ -244,14 +298,14 @@ class DBManager:
                 ");"
 
         #Серия (пополняемый словарь)
-        create_sequence = "DROP TABLE IF EXISTS sequence;" + \
+        create_sequence = u"DROP TABLE IF EXISTS sequence;" + \
                 "CREATE TABLE sequence (" + \
                 "uid SERIAL PRIMARY KEY," + \
                 "name text NOT NULL" + \
                 ");"
 
         #Книга(m) - Серия(m)
-        create_booksequence = "DROP TABLE IF EXISTS booksequence;" + \
+        create_booksequence = u"DROP TABLE IF EXISTS booksequence;" + \
                 "CREATE TABLE booksequence (" + \
                 "uid SERIAL PRIMARY KEY," + \
                 "bookid integer NOT NULL," + \
@@ -260,14 +314,14 @@ class DBManager:
                 ");"
 
         #Издательская серия (пополняемый словарь)
-        create_pubsequence = "DROP TABLE IF EXISTS pubsequence;" + \
+        create_pubsequence = u"DROP TABLE IF EXISTS pubsequence;" + \
                 "CREATE TABLE pubsequence (" + \
                 "uid SERIAL PRIMARY KEY," + \
                 "name text NOT NULL" + \
                 ");"
 
         #Книга(m) - Издательская серия (m)
-        create_bookpubsequence = "DROP TABLE IF EXISTS bookpubsequence;" + \
+        create_bookpubsequence = u"DROP TABLE IF EXISTS bookpubsequence;" + \
                 "CREATE TABLE bookpubsequence (" + \
                 "uid SERIAL PRIMARY KEY," + \
                 "bookid integer NOT NULL," + \
@@ -296,3 +350,15 @@ class DBManager:
         #sqlquery = "DROP TABLE public.author;"
         # retrieve the records from the database
         #records = cursor.fetchall()
+
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
+
+    #Тестовые методы
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
+
+    #Тестовый метод. Проверка connection usedb декоратора
+    @usedb
+    def testdb(self, db, *args, **kwargs):
+        print db
