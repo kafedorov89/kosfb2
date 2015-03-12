@@ -15,8 +15,8 @@ usedb = db.use_db(pool_name)
 
 class DBManager:
     def __init__(self, *args, **kwargs):
+        self.readylist = {}
         self.result = {}
-        self.blocked = False
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -25,11 +25,11 @@ class DBManager:
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     #Метод добавления задач очереди запросов к БД
-    def put_task_to_queue(self, task):
+    def put_task_to_queue(self, task, taskuid):
         try:
-            self.blocked = True
-            cherrypy.engine.bg_tasks_queue.queue.put(task)
-            while self.blocked:
+            self.readylist[taskuid] = False
+            cherrypy.engine.bg_tasks_queue.queue.put(task) #В очередь нормально не кладется
+            while not self.readylist[taskuid]:
                 pass
             return True
         except: # FIXME: Посмотреть какое исключение возникает в момент неудачноного добавления задачи в очередь
@@ -38,9 +38,9 @@ class DBManager:
 
 
     #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
-    def create_task(self, query):
+    def create_task(self, query, taskuid):
         def task(*args, **kwargs):
-            return self.easy_task(sqlquery = query)
+            return self.easy_task(sqlquery = query, taskuid = taskuid)
         return task
 
 
@@ -48,13 +48,14 @@ class DBManager:
     def easy_task (self, db, *args, **kwargs):
         #query = args[0]
         query = kwargs['sqlquery']
+        taskuid = kwargs['taskuid']
         print 'query in task = ', query
         dbcursor = db.cursor()
         dbcursor.execute(query)
-        result = dbcursor.fetchall()
-        #self.result = result
+        self.result[taskuid] = dbcursor.fetchall()
         dbcursor.close()
-        return result
+        self.readylist[taskuid] = True
+        #return True
 
     '''
     @usedb
@@ -124,20 +125,11 @@ class DBManager:
         query = self.create_query_find_rows(keyword = keyword, field = field, table = 'book')
         print 'query = ', query
 
-        #taskuid = str(uuid.uuid1())
+        taskuid = str(uuid.uuid1())
 
-        task = self.create_task(query)
-        result = task()
-
-        return result
-
-        #if self.put_task_to_queue(task):
-        #    return self.result
-        #else:
-        #    return {} # или []
-
-        #self.put_task_to_queue(task)
-        #return self.result
+        task = self.create_task(query, taskuid)
+        if self.put_task_to_queue(task, taskuid):
+            return self.result[taskuid]
 
         #if self.put_task_to_queue(task):
         #    return self.result

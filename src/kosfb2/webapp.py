@@ -261,9 +261,10 @@ class BookShelf(Base):
         books = dbm.find_books(field = 'title', keyword = u'Тестовая книга для поиска')
 
         print 'type(books) = ', type(books).__name__
+        print books
 
-        for book in books:
-            print book
+        #for book in books:
+        #    print book
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
     #Тестовый метод с JQuery
