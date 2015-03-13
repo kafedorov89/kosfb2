@@ -8,7 +8,8 @@ from cherrybase import plugins
 from cherrybase import db #Нужно ли импортировать db чтобы работать с @cherrybase.db.use_db?
 import uuid
 import time
-#import functools
+import functools
+import os
 
 #pool_name = __package__
 #cherrypy.engine.bg_tasks_queue = plugins.TasksQueue (cherrypy.engine)
@@ -20,7 +21,10 @@ usedb = db.use_db(pool_name)
 
 class DBManager:
     def __init__(self, *args, **kwargs):
-        self.taskqueue = kwargs['taskqueue']
+        try:
+            self.taskqueue = kwargs['taskqueue']
+        except:
+            pass
         self.readylist = {}
         self.result = {}
         #self.result = []
@@ -32,34 +36,46 @@ class DBManager:
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     #Метод добавления задач очереди запросов к БД
-    def put_task_to_queue(self, mytask, taskuid):
-        #print "cherrypy.engine.bg_tasks_queue = ", cherrypy.engine.bg_tasks_queue
+    def task_in_queue(self, query):
+        try_count = 0
+        max_try_count = 100
+        wait_time = 0.5
+
+        taskuid = str(uuid.uuid1())
+        task = self.create_task(query, taskuid)
+
         print "self.taskqueue = ", self.taskqueue
 
-        #cherrypy.engine.bg_tasks_queue.put(mytask)
-        #self.taskqueue.put(mytask)
-        #return True
-
         try:
-            #self.readylist[taskuid] = False
-            #task()
-            #cherrypy.engine.bg_tasks_queue.queue.put(task) #В очередь нормально не кладется (А какого хрена тут дополнительное .queue)
-            self.taskqueue.put(mytask)
-
-            #while not self.readylist[taskuid]:
-                #pass
-            return True
+            self.taskqueue.put(task)
+            while True:
+                try:
+                    #print self.result[taskuid]
+                    return self.result[taskuid]
+                except:
+                    try_count = try_count + 1
+                    if try_count > max_try_count:
+                        print "Error, task timeout"
+                        return []
+                time.sleep (wait_time)
         except: # FIXME: Посмотреть какое исключение возникает в момент неудачноного добавления задачи в очередь
-            return False
-            print "Error when task put to queue"
+            print "Error, when task put to queue"
+            return []
 
 
+
+
+    '''
     #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
     def create_task(self, query, taskuid):
         def task(*args, **kwargs):
             return self.easy_task(sqlquery = query, taskuid = taskuid)
         return task
+    '''
 
+    #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
+    def create_task(self, query, taskuid):
+        return functools.partial(self.easy_task, sqlquery = query, taskuid = taskuid)
 
     @usedb
     def easy_task (self, db, *args, **kwargs):
@@ -126,6 +142,100 @@ class DBManager:
             pass
             #Формируем запрос к БД
 
+            '''
+            #------------------------------------------  
+            
+            Используемые таблицы
+            
+            book
+                bookauthor
+            author
+            genre
+                bookgenre
+            sequence
+                booksequence
+            pubsequence
+                bookpubsequence
+            publisher
+            lang
+             
+            #------------------------------------------       
+            
+            Структура мета-данных книги
+            
+            #------------------------------------------
+            
+            'ID' 
+                Проверяем существет ли такая книга в БД
+            
+            'Version'
+                Проверяем версию книги
+                
+            Добавляем простые поля книги в таблицу book 
+            'ID' в fb2id
+            'Version' в version
+            'Title' в title
+            'Annotation' в annotation
+            'CoverFile' в coverfile
+            'CoverExist' в coverexist
+            'ZipFile' в zipfile
+                 Просто записываем значения в таблицу book
+                 
+                 Получаем uid новой книги из таблицы book по добавленному fb2id
+                
+            #------------------------------------------
+            
+            'Lang' в lang
+            
+            #------------------------------------------
+            
+            'Sequences'
+                'Name' Проверяем есть ли такая серия в таблице sequence
+                'Volume' Если серия есть. Проверяем есть ли такой том из серии в таблице booksequence
+                
+                Добавляем новую серию в таблицу sequence (если такой еще не было) или сразу берем uid из таблицы sequence
+                Добавляем запись в таблицу booksequence
+            
+            #------------------------------------------  
+            
+            'Publisher'
+                Проверяем есть ли такой издатель в таблице publisher, если нет то добавляем нового издателя
+                Получаем uid издателя
+                
+            #------------------------------------------
+            
+            'PubSequences'
+                Добавляем новую серию в таблицу pubsequence (если такой еще не было) или сразу берем uid из таблицы pubsequence
+                Добавляем запись в bookpubsequence
+            
+                'Name' Проверяем есть ли такая серия в таблице sequence
+                'Volume' Если серия есть. Проверяем есть ли такой том из серии в таблице bookpubsequence
+                
+                Указываем в таблице pubsequence publisherid = uid издателя из таблицы publisher 
+
+            #------------------------------------------
+            
+            'Genres'
+                Получаем список uid'ов из таблицы genres по полученным genrecode
+                Добавляем записи для каждого uid в таблицу bookgenre
+            
+            #------------------------------------------
+            
+            'Authors'
+                'FirstName'
+                'LastName'
+                'MiddleName'
+                'NickName'
+                
+                Проверяем есть ли авторы с такими firstname и lastname и middlename и nickname в таблице author
+                Если совпадение есть то берем uid'ы авторов из таблицы author
+                    Если есть совпадение но одно из полей в таблице author не заполнено, дополняем запись в таблице author полученными значениями
+                Если совпадений нет то создаем новых авторов в таблице author и получаем их uid'ы
+                Добавляем записи в таблицу bookauthor  
+                
+            #------------------------------------------
+            '''
+
         #cur.execute("INSERT INTO book (apoint) VALUES (%s)",
         #    ...             (Point(1.23, 4.56),))
         #return "book was added to"
@@ -143,24 +253,7 @@ class DBManager:
         keyword = kwargs['keyword'] #Значение поля
 
         query = self.create_query_find_rows(keyword = keyword, field = field, table = 'book')
-        print 'query = ', query
-
-        taskuid = str(uuid.uuid1())
-
-        task = self.create_task(query, taskuid)
-        if self.put_task_to_queue(task, taskuid):
-            while True:
-                try:
-                    print self.result[taskuid]
-                except:
-                    pass
-                time.sleep (3)
-            #return self.result[taskuid]
-
-        #if self.put_task_to_queue(task):
-        #    return self.result
-        #else:
-        #    return {} # или []
+        return self.task_in_queue(query)
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -225,6 +318,26 @@ class DBManager:
             query_str = u'SELECT * FROM {0} WHERE {1} LIKE \'%{2}%\' ORDER BY {3}'.format(table, field, keyword, orderfield)
         return query_str
 
+    #Генератор SQL-запроса для поиска подстроки keyword в поле field в таблице table c необязательным упорядочиванием по orderfield
+    def create_query_find_join_rows(self, *args, **kwargs):
+        #Если orderfield не передано или пусто то используем сортировку по алфавиту
+        keyword = kwargs['keyword']
+        field = kwargs['field']
+        table = kwargs['table']
+        childtable = kwargs['childtable']
+
+        try:
+            orderfield = kwargs['orderfield']
+            useorder = True
+        except:
+            useorder = False
+
+        if not useorder:
+            query_str = u'SELECT * FROM {0} WHERE {1} LIKE \'%{2}%\''.format(table, field, keyword)
+        else:
+            query_str = u'SELECT * FROM {0} WHERE {1} LIKE \'%{2}%\' ORDER BY {3}'.format(table, field, keyword, orderfield)
+        return query_str
+
     #Запиши всю информацию по книгам (книги)
     def insert_several_items(self, items = []):
         #Запуск insert_item(myitems[i]) по списку переданных объектов
@@ -234,115 +347,23 @@ class DBManager:
 
     #Создаем все таблицы для проекта kosfb2
     @usedb
-    def init_mydb(self, db):
+    def init_db(self, db):
         #Создаем БД
         #Создаем пользователя
         #Задаем права доступа пользователя
 
-        #Автор (пополняемый словарь)
-        create_author = u"DROP TABLE IF EXISTS author;" + \
-                "CREATE TABLE author (" + \
-                "uid SERIAL PRIMARY KEY," + \
-                "firstname varchar(40) NOT NULL," + \
-                "lastname varchar(40) DEFAULT NULL," + \
-                "middlename varchar(40) DEFAULT NULL," + \
-                "nickname varchar(40) DEFAULT NULL," + \
-                "email varchar(40) DEFAULT NULL" + \
-                ");"
+        sqlsource = os.path.join(pool_name, "__config__/fb2data.sql")
+        print sqlsource
 
-        #Книга (основной объект)
-        create_book = u"DROP TABLE IF EXISTS book;" + \
-                "CREATE TABLE book (" + \
-                "uid SERIAL PRIMARY KEY," + \
-                "title varchar(300) NOT NULL," + \
-                "encoding varchar(20) NOT NULL," + \
-                "lang varchar(15) DEFAULT NULL," + \
-                "bookid varchar(100) NOT NULL, " + \
-                "version float NOT NULL," + \
-                "annotation text DEFAULT NULL," + \
-                "coverfile text NOT NULL," + \
-                "coverexist boolean DEFAULT NULL," + \
-                "zipfile text NOT NULL" + \
-                ");"
-
-        #Жанр (пополняемый словарь)
-        create_genre = u"DROP TABLE IF EXISTS genre;" + \
-                "CREATE TABLE genre (" + \
-                "uid SERIAL PRIMARY KEY," + \
-                "genrename integer NOT NULL," + \
-                "genrecode integer NOT NULL" + \
-                ");"
-
-        #Книга(m) - Автор(m)
-        create_bookauthor = u"DROP TABLE IF EXISTS bookauthor;" + \
-                "CREATE TABLE bookauthor (" + \
-                "uid SERIAL PRIMARY KEY," + \
-                "bookid integer NOT NULL," + \
-                "authorid integer NOT NULL" + \
-                ");"
-
-        #Книга(m) - Жанр(m)
-        create_bookgenre = u"DROP TABLE IF EXISTS bookgenre;" + \
-                "CREATE TABLE bookgenre (" + \
-                "uid SERIAL PRIMARY KEY," + \
-                "bookid integer NOT NULL," + \
-                "genreid integer NOT NULL" + \
-                ");"
-
-        #Серия (пополняемый словарь)
-        create_sequence = u"DROP TABLE IF EXISTS sequence;" + \
-                "CREATE TABLE sequence (" + \
-                "uid SERIAL PRIMARY KEY," + \
-                "name text NOT NULL" + \
-                ");"
-
-        #Книга(m) - Серия(m)
-        create_booksequence = u"DROP TABLE IF EXISTS booksequence;" + \
-                "CREATE TABLE booksequence (" + \
-                "uid SERIAL PRIMARY KEY," + \
-                "bookid integer NOT NULL," + \
-                "sequenceid integer NOT NULL," + \
-                "volume integer NOT NULL" + \
-                ");"
-
-        #Издательская серия (пополняемый словарь)
-        create_pubsequence = u"DROP TABLE IF EXISTS pubsequence;" + \
-                "CREATE TABLE pubsequence (" + \
-                "uid SERIAL PRIMARY KEY," + \
-                "name text NOT NULL" + \
-                ");"
-
-        #Книга(m) - Издательская серия (m)
-        create_bookpubsequence = u"DROP TABLE IF EXISTS bookpubsequence;" + \
-                "CREATE TABLE bookpubsequence (" + \
-                "uid SERIAL PRIMARY KEY," + \
-                "bookid integer NOT NULL," + \
-                "pubsequenceid integer NOT NULL," + \
-                "volume integer NOT NULL" + \
-                ");"
-
-        myquery = create_author + \
-                    create_book + \
-                    create_genre + \
-                    create_bookauthor + \
-                    create_bookgenre + \
-                    create_sequence + \
-                    create_booksequence + \
-                    create_pubsequence + \
-                    create_bookpubsequence
+        with open(sqlsource, 'r') as fquery:
+            myquery = fquery.read()
+            print myquery
 
         mycursor = db.cursor() #.select_all('SELECT count(*) FROM author;')
         myquery = myquery
         mycursor.execute(myquery)
 
-        #db.cursor().execute(sqlquery)
-        #conn.commit() #Подтвержаем изменения, сделанные в базе
         print u"Таблицы созданы"
-
-        #sqlquery = "DROP TABLE public.author;"
-        # retrieve the records from the database
-        #records = cursor.fetchall()
-
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 

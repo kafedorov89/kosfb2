@@ -18,6 +18,8 @@ print cherrypy.engine.state
 #pool_name = __package__
 #usedb = db.use_db(pool_name)
 
+dbm = DBManager.DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
+
 class Base(object):
 
     #Задаем место расположения файлов tpl для jinja2
@@ -119,6 +121,8 @@ class BookShelf(Base):
     @cherrypy.expose
     def findbook(self, *args, **kwargs):
 
+
+
         #Пробуем обработать параметры группировки из WEB-формы
         try:
             self.grouptype = kwargs["grouptype"]
@@ -159,7 +163,13 @@ class BookShelf(Base):
         #Делаем запрос к БД и получаем список книг
         try:
             #self.booklist = DBManager.find_book(self.findtype, self.findkeyword, self.grouptype)
-            self.booklist = self.testbook
+            #self.booklist = self.testbook
+
+            self.booklistbooks = dbm.find_books(field = 'title', keyword = self.findkeyword.encode('utf-8', 'ignore'))
+
+
+
+
         except:
             self.booklist = []
             print "По данным условиям поиска книги не найдены"
@@ -181,6 +191,13 @@ class BookShelf(Base):
     #Вспомогательные методы
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
+    #Инициализация базы данных fb2data
+    @cherrypy.expose
+    def initfb2data (self):
+        dbm = DBManager.DBManager()
+        dbm.init_db()
+
+
     #Функция получает на входе результат поиска
     #На выходе функция выдает массив из книг которые должны отображаться на текущей странице
     def get_page_booklist(self):
@@ -274,10 +291,6 @@ class BookShelf(Base):
         pass
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
-
-    @cherrypy.expose
-    def privet (self):
-        return "Привет"
 
     #Тестовый метод для проверки работоспособности очереди запросов к БД
     @cherrypy.expose
