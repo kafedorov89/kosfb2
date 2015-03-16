@@ -9,21 +9,23 @@ import shutil
 import zipfile
 import os
 import uuid
-import DBManager
+#import DBManager
 
 #Тестовая функция для вывода полученных метаданных по книге
-class FileParser(object):
+class FileParser:
 
     def __init__(self, *args, **kwargs):
-        #Указываем общий рабочий каталог для хранения временных каталогов для каждого разбора файлов
+        #Указываем общий рабочий каталог с фалами fb2, которые необходимо разобрать
         self.mainfolder = args[0]
-        print "foldername = ", self.mainfolder
+        #Указыаем каталог, куда будем складывать разобранные книги в архивах с обложками
+        self.destfolder = args[1]
+        #print "foldername = ", self.mainfolder
 
     def show_book_info(self, Book):
         print Book
 
     #Парсер для одной итерации. Разбирает передаваемый ему filename и возвращает словарь Book с метаданными
-    def one_book_parser(self, filename):
+    def one_book_parser(self, filepath):
         Book = {}
         Annotation = ""
         Genres = []
@@ -35,9 +37,14 @@ class FileParser(object):
         myparser = LX.XMLParser(recover = True)
 
         #--------------------------------------------------------------------------------------------------------
+
+        print "filepath = ", filepath
+
+        #Получаем полный путь к файлу книги
+        #filepath = os.path.join(self.mainfolder, filename)
+        book = LX.parse(filepath, myparser)
+
         #Определяем КОДИРОВКУ книги
-        print "filename = ", filename
-        book = LX.parse(filename, myparser)
         print "Кодировка книги: ", book.docinfo.encoding
         # FIXME Добавить использование кодировки при получении мета-данных из книги
         Book["Encoding"] = book.docinfo.encoding
@@ -221,11 +228,11 @@ class FileParser(object):
             if (conttype == 'image/jpeg'):
                 print "Найдено изображение типа: jpeg"
                 #coverfile = "../tmpbook/" + Book['ID'] + "_cover.jpg"
-                coverfile = os.path.join(self.tmpfoldername, "{0}{1}".format(Book['ID'], ".jpg"))
+                coverfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".jpg"))
                 coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в jpg
             elif (conttype == 'image/png'):
                 #coverfile = "../tmpbook/" + Book['ID'] + "_cover.png"
-                coverfile = os.path.join(self.tmpfoldername, "{0}{1}".format(Book['ID'], ".png"))
+                coverfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".png"))
                 coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в png
                 print "Найдено изображение типа: png"
 
@@ -236,6 +243,7 @@ class FileParser(object):
             Book["CoverFile"] = coverfile
             #print binary.text #Выводим на экран бинарное представление jpg изображения, вложенного в fb2 файл
         except:
+            coverfile = os.path.join(self.destfolder, "default.jpg")
             print "Обложка не найдена в файле"
             coverexist = False
 
@@ -243,8 +251,8 @@ class FileParser(object):
         #Завершаем запись обложки
         #--------------------------------------------------------------------------------------------------------
         #Копируем файл книги с новым названием и кладем рядом с обложкой во временный каталог
-        newbookfile = os.path.join(self.tmpfoldername, "{0}{1}".format(Book['ID'], ".fb2"))
-        newbookzipfile = os.path.join(self.tmpfoldername, "{0}{1}".format(Book['ID'], ".zip"))
+        newbookfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".fb2"))
+        newbookzipfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".zip"))
         print newbookfile
         if(os.path.exists(newbookfile)):
             print "Временный файл книги уже существует и будет заменен на более новый"
@@ -254,7 +262,7 @@ class FileParser(object):
             print "Временный файл архива книги уже существует и будет заменен на более новый"
             os.remove(newbookzipfile) #Удаляем файл с временным
 
-        shutil.copy(filename, newbookfile)
+        shutil.copy(filepath, newbookfile)
         #--------------------------------------------------------------------------------------------------------
         #Упаковываем файл книги в архив
         try:
@@ -269,7 +277,7 @@ class FileParser(object):
         if(os.path.exists(newbookfile)):
             os.remove(newbookfile)
 
-        return Book #Возвращаем готовую для экспорта в БД книгу со всеми полями
+        return Book #Возвращаем готовую для импорта в БД книгу со всеми полями
 
     def several_book_parser(self, derictory_name):
         #derictory_name - каталог с файлами fb2 (по плану это ../uploadedbooks/fb2_<UUID>)
@@ -288,7 +296,7 @@ class FileParser(object):
             #Потом нужно заменить укладку в массив на укладку в БД напрямую
 
     def testdb(self):
-        dbm = DBManager.DBManager()
+        dbm = DBManager()
         dbm.testdb()
 
     def test(self):

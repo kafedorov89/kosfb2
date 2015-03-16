@@ -98,35 +98,27 @@
 				<!-- Текстовая информация о книге -->
 				<div id="book-text-desc">
 					<!-- Название -->
-					Название: {{book['Title']}}<br>
+					Название: {{book['Title']}};<br>
 					
 					<!-- Авторы -->
-					Авторы: {% for author in book['Authors'] %}
-						{{author['LastName']}} {{author['FirstName']}} {{author['MiddleName']}};
-					{% endfor %}<br>
+					Авторы: {{book['Authors']}};<br>
 					
 					<!-- Жанры -->
-					Жанры: {% for genre in book['Genres'] %}
-						{{genre['Name']}};
-					{% endfor %}<br>
+					Жанры: {{book['Genres']}};<br>
 					
 					<!-- Серии -->
 					Серии: 
-					{% if book['Sequence']|length > 0 %}
-						{% for sequence in book['Sequence'] %}
-							{{sequence['Name']}}, Том: {{sequence['Volume']}};
-						{% endfor %}<br>
+					{% if book['Sequences']|length > 0 %}
+						{{book['Sequences']}};<br>
 					{% else %}
 						Книга не входит ни в одну серию<br>
 					{% endif %}
 					<!-- Издательские серии -->
-					Издатель: {{book['Title']}}<br>
+					Издатель: {{book['Publisher']}}<br>
 					
 					Издательские серии: 
-					{% if book['PubSequence']|length > 0 %}
-						{% for pubsequence in book['PubSequence'] %}
-							{{pubsequence['Name']}}, Том: {{pubsequence['Volume']}};
-						{% endfor %}<br>
+					{% if book['PubSequences']|length > 0 %}
+						{{book['PubSequences']}};<br>
 					{% else %}
 						Книга не входит ни в одну издательскую серию<br>
 					{% endif %}

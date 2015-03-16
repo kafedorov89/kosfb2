@@ -1,5 +1,5 @@
 -- Автор (пополняемый словарь)
-DROP TABLE IF EXISTS author;
+DROP TABLE IF EXISTS author CASCADE;
 CREATE TABLE author (
     uid SERIAL PRIMARY KEY,
     firstname varchar(40) NOT NULL,
@@ -10,12 +10,14 @@ CREATE TABLE author (
     );
 
 -- Книга (основной объект)
-DROP TABLE IF EXISTS book;
+DROP TABLE IF EXISTS book CASCADE;
 CREATE TABLE book (
     uid SERIAL PRIMARY KEY,
+    iscorrect boolean DEFAULT FALSE,
     title varchar(300) NOT NULL,
     encoding varchar(20) NOT NULL,
-    lang varchar(15) DEFAULT NULL,
+    langid integer DEFAULT NULL,
+    publisherid integer DEFAULT NULL,
     fb2id varchar(100) CONSTRAINT fb2id_must_be_different UNIQUE NOT NULL, 
     version float NOT NULL,
     annotation text DEFAULT NULL,
@@ -25,15 +27,15 @@ CREATE TABLE book (
     );
 
 -- Жанр (пополняемый словарь)
-DROP TABLE IF EXISTS genre;
+DROP TABLE IF EXISTS genre CASCADE;
 CREATE TABLE genre (
     uid SERIAL PRIMARY KEY,
-    genrename varchar(40)  NOT NULL, 
-    genrecode varchar(40)  CONSTRAINT genrecode_must_be_different UNIQUE NOT NULL 
+    name varchar(50)  NOT NULL, 
+    code varchar(50)  CONSTRAINT genrecode_must_be_different UNIQUE NOT NULL 
     );
     
 -- Инициализируем таблицу жанров
-INSERT INTO genre (genrecode, genrename) VALUES 
+INSERT INTO genre (code, name) VALUES 
                 ('sf_history', 'Альтернативнаяистория'),
                 ('sf_action', 'БоеваяФантастика'),
                 ('sf_epic', 'ЭпическаяФантастика'),
@@ -147,73 +149,74 @@ INSERT INTO genre (genrecode, genrename) VALUES
                 ('home', 'ДомиСемья:Прочее');
 
 -- Книга(m) - Автор(m)
-DROP TABLE IF EXISTS bookauthor;
+DROP TABLE IF EXISTS bookauthor CASCADE;
 CREATE TABLE bookauthor (
     uid SERIAL PRIMARY KEY,
     bookid integer NOT NULL,
     authorid integer NOT NULL,
-    CONSTRAINT check_book FOREIGN KEY (bookid) REFERENCES book (uid),
-    CONSTRAINT check_author FOREIGN KEY (authorid) REFERENCES author (uid)
+    CONSTRAINT check_book FOREIGN KEY (bookid) REFERENCES book (uid) ON DELETE CASCADE,
+    CONSTRAINT check_author FOREIGN KEY (authorid) REFERENCES author (uid) ON DELETE CASCADE
     );
 
 -- Книга(m) - Жанр(m)
-DROP TABLE IF EXISTS bookgenre;
+DROP TABLE IF EXISTS bookgenre CASCADE;
 CREATE TABLE bookgenre (
     uid SERIAL PRIMARY KEY,
     bookid integer NOT NULL,
     genreid integer NOT NULL,
-    CONSTRAINT check_book FOREIGN KEY (bookid) REFERENCES book (uid),
-    CONSTRAINT check_genre FOREIGN KEY (genreid) REFERENCES genre (uid)
+    CONSTRAINT check_book FOREIGN KEY (bookid) REFERENCES book (uid) ON DELETE CASCADE,
+    CONSTRAINT check_genre FOREIGN KEY (genreid) REFERENCES genre (uid) ON DELETE CASCADE
     );
 
 -- Серия (пополняемый словарь)
-DROP TABLE IF EXISTS sequence;
+DROP TABLE IF EXISTS sequence CASCADE;
 CREATE TABLE sequence (
     uid SERIAL PRIMARY KEY,
-    name text NOT NULL
+    name text CONSTRAINT sequence_name_must_be_different UNIQUE NOT NULL
     );
 
 -- Книга(m) - Серия(m)
-DROP TABLE IF EXISTS booksequence;
+DROP TABLE IF EXISTS booksequence CASCADE;
 CREATE TABLE booksequence (
     uid SERIAL PRIMARY KEY,
     bookid integer NOT NULL,
     sequenceid integer NOT NULL,
     volume integer NOT NULL,
-    CONSTRAINT check_book FOREIGN KEY (bookid) REFERENCES book (uid),
-    CONSTRAINT check_sequence FOREIGN KEY (sequenceid) REFERENCES sequence (uid)  
+    CONSTRAINT check_book FOREIGN KEY (bookid) REFERENCES book (uid) ON DELETE CASCADE,
+    CONSTRAINT check_sequence FOREIGN KEY (sequenceid) REFERENCES sequence (uid) ON DELETE CASCADE 
     );
 
 -- Издательская серия (пополняемый словарь)
-DROP TABLE IF EXISTS pubsequence;
+DROP TABLE IF EXISTS pubsequence CASCADE;
 CREATE TABLE pubsequence (
     uid SERIAL PRIMARY KEY,
-    name text NOT NULL
+    publisherid integer NOT NULL,
+    name text CONSTRAINT pubsequence_name_must_be_different UNIQUE NOT NULL
     );
 
 -- Книга(m) - Издательская серия (m)
-DROP TABLE IF EXISTS bookpubsequence;
+DROP TABLE IF EXISTS bookpubsequence CASCADE;
 CREATE TABLE bookpubsequence (
     uid SERIAL PRIMARY KEY,
     bookid integer NOT NULL,
-    pubsequenceid integer NOT NULL,
+    sequenceid integer NOT NULL,
     volume integer NOT NULL,
-    CONSTRAINT check_book FOREIGN KEY (bookid) REFERENCES book (uid),
-    CONSTRAINT check_pubsequence FOREIGN KEY (pubsequenceid) REFERENCES pubsequence (uid)
+    CONSTRAINT check_book FOREIGN KEY (bookid) REFERENCES book (uid) ON DELETE CASCADE,
+    CONSTRAINT check_pubsequence FOREIGN KEY (sequenceid) REFERENCES pubsequence (uid) ON DELETE CASCADE
     );
 
 -- Язык (пополняемый словарь)
-DROP TABLE IF EXISTS lang;
-CREATE TABLE lang (
+DROP TABLE IF EXISTS language CASCADE;
+CREATE TABLE language (
     uid SERIAL PRIMARY KEY,
-    langcode varchar(40) DEFAULT NULL CONSTRAINT langcode_must_be_different UNIQUE,
-    altercode1 varchar(40) DEFAULT NULL CONSTRAINT altercode1_must_be_different UNIQUE,
-    altercode2 varchar(40) DEFAULT NULL CONSTRAINT altercode2_must_be_different UNIQUE,
-    langname varchar(40) NOT NULL CONSTRAINT langname_must_be_different UNIQUE
+    langcode varchar(40) CONSTRAINT langcode_must_be_different UNIQUE,
+    altercode1 varchar(40) CONSTRAINT altercode1_must_be_different UNIQUE,
+    altercode2 varchar(40) CONSTRAINT altercode2_must_be_different UNIQUE,
+    name varchar(40) CONSTRAINT lang_name_must_be_different UNIQUE NOT NULL
     );
 
 -- Инициализируем таблицу жанров
-INSERT INTO lang (altercode1, altercode2, langcode, langname) VALUES
+INSERT INTO language (altercode1, altercode2, langcode, name) VALUES
                 ('alb', 'sqi', 'sq', 'Албанский'),
                 ('dut', 'nla', 'nl', 'Голландский'),
                 ('ell', 'gre', 'el', 'Греческий современный'),
@@ -228,15 +231,15 @@ INSERT INTO lang (altercode1, altercode2, langcode, langname) VALUES
                 ('ces', 'cze', 'cs', 'Чешский'),
                 ('sve', 'swe', 'sv', 'Шведский'),
                 ('arm', 'hye', 'hy', 'Армянский');
-INSERT INTO lang (altercode1, langname) VALUES
+INSERT INTO language (altercode1, name) VALUES
                 ('che', 'Чеченский'),
                 ('BA', 'Башкирский'),
                 ('grc', 'Древнегреческий'),
                 ('mul', 'Несколько языков'),
                 ('und', 'Неопределенный');
-INSERT INTO lang (langcode, langname) VALUES                
+INSERT INTO language (langcode, name) VALUES                
                 ('hr', 'Хорватский');
-INSERT INTO lang (altercode1, langcode, langname) VALUES
+INSERT INTO language (altercode1, langcode, name) VALUES
                 ('abk', 'ab', 'Абхазский'),
                 ('aze', 'az', 'Азербайджанский'),
                 ('eng', 'en', 'Английский'),
@@ -272,8 +275,8 @@ INSERT INTO lang (altercode1, langcode, langname) VALUES
                 ('jpn', 'ja', 'Японский');
 
 -- Издатель (пополняемый словарь)
-DROP TABLE IF EXISTS publisher;
+DROP TABLE IF EXISTS publisher CASCADE;
 CREATE TABLE publisher (
     uid SERIAL PRIMARY KEY,
-    publishername varchar(200) NOT NULL
+    name varchar(200) CONSTRAINT publisher_name_must_be_different UNIQUE NOT NULL
     );

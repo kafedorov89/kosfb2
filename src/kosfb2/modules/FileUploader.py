@@ -2,10 +2,14 @@
 import os
 import shutil
 import uuid
-#import cherrypy
-from FileFinder import FileFinder
-from FileParser import FileParser
+import cherrypy
+# FileFinder import FileFinder
+#from FileParser import FileParser
+#from DBManager import DBManager
+from kosfb2.modules import FileFinder, DBManager, FileParser
 import fb2tools
+
+dbm = DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
 
 class ErrorFileUploader(Exception):
     def __init__(self, value):
@@ -13,10 +17,12 @@ class ErrorFileUploader(Exception):
     def __str__(self):
         return repr(self.value)
 
-class FileUploader(object):
+class FileUploader:
     def __init__(self, *args, **kwargs):
         #Указываем общий рабочий каталог для временного хранения временных каталогов для каждого разбора файлов
-        self.foldername = kwargs['folderpath']
+        self.foldername = kwargs['foldername']
+        self.destfolder = kwargs['destfolder']
+
         print "foldername = ", self.foldername
 
         #Если общий каталог еще не был создан, создаем его
@@ -71,13 +77,16 @@ class FileUploader(object):
         ff = FileFinder(mainfolder)
         if(ff.find(heapfolder, 0)):
             #Если поиск отработал успешно Запускаем модуль FileParser по списку найденных fb2 фалов
-            fp = FileParser(fb2prepfolder)
+            fp = FileParser(fb2prepfolder, self.destfolder)
 
             fb2folder = os.path.join(mainfolder, 'fb2')
             fb2filelist = os.listdir(fb2folder)
             for file in fb2filelist:
-                #Запускаем
-                pass
+                #Запускаем FileParser для одного файла и Добаляем метаданные по разобранному файлу в БД
+                if(dbm.add_book(fp.one_book_parser(os.path.join(fb2folder, file)))):
+                    print "Добавление файла и метаданных произошло успешно"
+                else:
+                    print "Ошибка. Файл и метаданные не добавлены"
         else:
             # FIXME Надо бы добавить класс ошибок и raise вместо print
             print "Ошибка. Модуль FileFinder некорректно завершил работу."
@@ -86,13 +95,19 @@ class FileUploader(object):
             #Удаляем временный каталог
 
 
-
+'''
 if __name__ == "__main__":
     #fu = FileUploader()
     #fu.upload()
     mainfolder = '/home/kos/Dropbox/workspace/rconline/pylearn/kosfb2/src/kosfb2/uploadedbook/d45f8400-c7cb-11e4-afd7-2c27d7b02944'
+    destfolder = '/home/kos/Dropbox/workspace/rconline/pylearn/kosfb2/src/kosfb2/__static__/books'
+
     fb2folder = os.path.join(mainfolder, 'fb2')
     fb2filelist = os.listdir(fb2folder)
     #print fb2filelist
+    fp = FileParser(fb2folder, destfolder)
+
     for file in fb2filelist:
-        pass
+        filepath = os.path.join(fb2folder, file)
+        dbm.add_book(fp.one_book_parser(filepath))
+'''

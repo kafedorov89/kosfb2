@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 #import pkg_resources
 import cherrypy
-import cgi
-import tempfile
+#import cgi
+#import tempfile
 #import cherrybase
 import jinja2
 import os
 import math
 import time
 #from cherrybase import db
-from modules import FileUploader, DBManager, FileParser
+from kosfb2.modules import FileUploader, DBManager, FileParser
 #import kosfb2.modules
 
 print cherrypy.engine.state
@@ -18,7 +18,8 @@ print cherrypy.engine.state
 #pool_name = __package__
 #usedb = db.use_db(pool_name)
 
-dbm = DBManager.DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
+#dbm = DBManager.DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
+dbm = DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
 
 class Base(object):
 
@@ -61,7 +62,7 @@ class BookShelf(Base):
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
     @cherrypy.expose
-    @cherrypy.tools.jinja (template = 'book2.tpl')
+    @cherrypy.tools.jinja (template = 'book3.tpl')
     def index(self):
         print "self.pagebookcount = ", self.pagebookcount
         print "message = ", self.message
@@ -74,14 +75,6 @@ class BookShelf(Base):
                 'message' : self.message
                 }
 
-    def parsebook(self):
-        #bookfile = '/Volumes/MACDATA/Dropbox/workspace/rconline/pylearn/kosfb2/info/books/trash/Likum_Vse_obo_vsem._Tom_2.224988.fb2' # For MacBook
-        #bookfile = '/Volumes/MACDATA/Dropbox/workspace/rconline/pylearn/kosfb2/books/П/Павлов Олег - Вниз по лестнице в небеса.fb2'
-        #bookfile необходимо передавать при вызове парсера
-        #show_book_info(one_book_parser(bookfile)) #Получаем все метаданные по книге в указанном каталоге
-
-        pass
-
     #Добавление новых книг в библиотеку
     @cherrypy.expose
     def uploadbook(self, *args, **kwargs):
@@ -91,14 +84,23 @@ class BookShelf(Base):
         #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
         #print "test uploadfile = ", uploadfile
 
-        fu = FileUploader.FileUploader(folderpath = os.path.join('kosfb2', 'uploadedbook'))
+        fu = FileUploader(foldername = os.path.join('kosfb2', 'uploadedbook'), destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
+#        fu = FileUploader.FileUploader(foldername = os.path.join('kosfb2', 'uploadedbook'),
+#                                    destfolder = os.path.join('kosfb2', '__static__', 'books'))
+
+
+        fu.upload(files = uploadfile)
+
+        '''
         try:
             fu.upload(files = uploadfile)
         except:
             self.message = u"Ошибка. Новые книги не добавлены в библиотеку."
         else:
             self.message = u"Новые книги добавлены в библиотеку."
+        '''
+
         '''
         print "uploadfile = ", uploadfile
 
@@ -115,13 +117,10 @@ class BookShelf(Base):
     def downloadbook(self):
         #Упаковываем выбранные книги , books = [] в архив
         #Передаем архив браузеру для скачивания
-
         return "Производится скачивание выбранной книги"
 
     @cherrypy.expose
     def findbook(self, *args, **kwargs):
-
-
 
         #Пробуем обработать параметры группировки из WEB-формы
         try:
@@ -162,14 +161,9 @@ class BookShelf(Base):
 
         #Делаем запрос к БД и получаем список книг
         try:
-            #self.booklist = DBManager.find_book(self.findtype, self.findkeyword, self.grouptype)
-            #self.booklist = self.testbook
-
-            self.booklistbooks = dbm.find_books(field = 'title', keyword = self.findkeyword.encode('utf-8', 'ignore'))
-
-
-
-
+            self.booklist = self.booklistbooks = dbm.find_books(keyword = self.findkeyword.encode('utf-8', 'ignore'),
+                                                                findtype = int(self.findtype),
+                                                                orderby = int(self.grouptype))
         except:
             self.booklist = []
             print "По данным условиям поиска книги не найдены"
@@ -193,8 +187,8 @@ class BookShelf(Base):
     #----------------------------------------------------------------------------------------------------------------------------------------------------
     #Инициализация базы данных fb2data
     @cherrypy.expose
-    def initfb2data (self):
-        dbm = DBManager.DBManager()
+    def init_fb2_data (self):
+        #dbm = DBManager()
         dbm.init_db()
 
 
@@ -253,6 +247,14 @@ class BookShelf(Base):
     #Тестовые методы
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
+
+    def parsebook(self):
+        #bookfile = '/Volumes/MACDATA/Dropbox/workspace/rconline/pylearn/kosfb2/info/books/trash/Likum_Vse_obo_vsem._Tom_2.224988.fb2' # For MacBook
+        #bookfile = '/Volumes/MACDATA/Dropbox/workspace/rconline/pylearn/kosfb2/books/П/Павлов Олег - Вниз по лестнице в небеса.fb2'
+        #bookfile необходимо передавать при вызове парсера
+        #show_book_info(one_book_parser(bookfile)) #Получаем все метаданные по книге в указанном каталоге
+
+        pass
 
     @cherrypy.expose
     def testdb_in_FileParser (self):
