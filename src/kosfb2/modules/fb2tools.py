@@ -48,8 +48,9 @@ def filesaver(savepath, file, filename, Rename = True):
     filepath = os.path.join(savepath, newfilename)
     print "filename for save = ", filepath
 
-    with open(filepath, 'w') as f:
+    with open(filepath, 'wb') as f:
         f.write(file.read())
+        print f
 
 def safeextract(*args, **kwargs):
     source_filename = args[0]
@@ -72,6 +73,7 @@ def safeextract(*args, **kwargs):
         archtype = 1
     else:
         #Тип архива не распознан
+        print "Ошибка. Архив не распознан"
         archtype = -1
 
     #Выводим список файлов содержащихся в архиве
@@ -84,7 +86,6 @@ def safeextract(*args, **kwargs):
             #filename -------------------------------------------------------------------------------
             filename = infoitem.filename
             #filename = decodestr(filename) #Так не находит фалй в архиве
-
 
             print "arch filename = ", filename
 
@@ -99,8 +100,12 @@ def safeextract(*args, **kwargs):
             #logfile.write("postfix = {0}\n".format(decodestr(postfix)))
 
             if postfix in [".fb2", ".rar", ".zip"]:
-                unpackedfile = arch.open(filename)
-                filesaver(dest_dir, unpackedfile, postfix)
+                try:
+                    unpackedfile = arch.open(filename)
+                    filesaver(dest_dir, unpackedfile, postfix)
+                except:
+                    print "Ошибка. Не удалось распаковать распознанный архив."
+
                 '''
                 try:
                     fb2tools.filesaver(dest_dir, savename, arch.read(filename))

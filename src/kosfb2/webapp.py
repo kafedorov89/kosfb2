@@ -191,6 +191,11 @@ class BookShelf(Base):
         #dbm = DBManager()
         dbm.init_db()
 
+    #Инициализация таблицы жанров
+    @cherrypy.expose
+    def init_genre_table (self):
+        #dbm = DBManager()
+        dbm.init_genre()
 
     #Функция получает на входе результат поиска
     #На выходе функция выдает массив из книг которые должны отображаться на текущей странице
