@@ -23,8 +23,8 @@ var/
 *.egg
 
 # PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+# Usually these files are written by a python script from a template
+# before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
@@ -59,7 +59,8 @@ src/kosfb2/preparedbook/
 .project
 .pydevproject
 .settings/
-src/kosfb2/__static__/
+#src/kosfb2/__static__/
 .DS_Store
 .directory
 .dropbox
+.gitignore
