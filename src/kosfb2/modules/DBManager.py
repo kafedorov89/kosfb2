@@ -11,6 +11,8 @@ import time
 import functools
 import os
 import itertools
+from fb2tools import maskquotes as mq
+from psycopg2.extensions import adapt
 
 #pool_name = __package__
 #cherrypy.engine.bg_tasks_queue = plugins.TasksQueue (cherrypy.engine)
@@ -124,320 +126,315 @@ class DBManager:
         try:
             bookid = Book['ID']
             booktitle = Book['Title']
-            isbook = True
         except:
-            isbook = False
             print "Ошибка. Пустые мета-данные"
-
-        if isbook:
-            #Проверь есть ли книга с таким id в БД
-            if(self.check_value_exist('book', "fb2id", Book["ID"])):
-                exists = True
-                print "Запись в БД уже существует"
-                #Проверь верcию книги, если книга уже есть в БД
-                if(self.check_value_bigger('book', 'version', Book["Version"], 'fb2id', Book["ID"])):
-                    print "Добавляемая книга имеет более новую версию"
-                    newer_version = True
-                else:
-                    print "Добавляемая книга имеет такую же версию или более раннюю"
-                    newer_version = False
-                    iscorrect = self.check_book_iscorrect(Book["ID"])
-                    if (not iscorrect):
-                        #Удаляем существующую запись о книге из БД из всех связных таблиц
-                        print "Ошибка. Запись в БД по книге не корректна. Будет удален файл и мета-данные"
-                        self.delete_book(Book['ID'])
-                        exists = False
-            else:
-                exists = False
-
-            #Добавь мета-данные книги в БД, если ее нет в базе, или книга имеет более новую версию чем существующая в БД
-            if (not exists) or newer_version:
-                #Формируем запрос к БД
-
-                '''
-                #------------------------------------------  
-                
-                Используемые таблицы
-                
-                book
-                    bookauthor
-                author
-                genre
-                    bookgenre
-                sequence
-                    booksequence
-                pubsequence
-                    bookpubsequence
-                publisher
-                lang
-                 
-                #------------------------------------------       
-                
-                Структура мета-данных книги
-                
-                #------------------------------------------
-                
-                'ID' 
-                    Проверяем существет ли такая книга в БД
-                
-                'Version'
-                    Проверяем версию книги
-                    
-                Добавляем простые поля книги в таблицу book 
-                'ID' в fb2id
-                'Version' в version
-                'Title' в title
-                'Annotation' в annotation
-                'CoverFile' в coverfile
-                'CoverExist' в coverexist
-                'ZipFile' в zipfile
-                     Просто записываем значения в таблицу book
-                     
-                '''
-                book_uid = tq(insertrow(table = 'book',
-                                        fields = ['fb2id',
-                                                  'iscorrect',
-                                                  'version',
-                                                  'encoding',
-                                                  'title',
-                                                  'coverfile',
-                                                  'coverexist',
-                                                  'zipfile'],
-                                        values = [Book["ID"],
-                                                  False,
-                                                  Book["Version"],
-                                                  Book["Encoding"],
-                                                  Book["Title"],
-                                                  Book["CoverFile"],
-                                                  Book["CoverExist"],
-                                                  Book["ZipFile"]]))[0][0]
-
-                #Пробуем получить описание книги
-                try:
-                    annotation = Book["Annotation"]
-                    tq(updaterow(table = 'book',
-                             updatefields = ['annotation'],
-                             values = [annotation]),
-                             keyfield = 'uid',
-                             keyword = book_uid)
-                except:
-                    print "Ну далось получить описание книги"
-
-                '''
-                     
-                Получаем uid новой книги из таблицы book по добавленному fb2id 
-                    
-                #------------------------------------------
-                
-                'Lang' 
-                    Находим uid языка из таблицы language
-                    Ищем uid по полям altercode1, altercode2, langcode
-                    Записываем в таблицу book
-                '''
-
-                lang_uid = tq(findrows(keyword = Book['Lang'],
-                                       showfields = ['uid'],
-                                       keyfield = 'langcode',
-                                       table = 'language'))
-
-                tq(updaterow(table = 'book',
-                             updatefields = ['langid'],
-                             values = [lang_uid[0][0]],
-                             keyfield = 'uid',
-                             keyword = book_uid))
-                '''
-                #------------------------------------------
-                
-                'Sequences'
-                    'Name' Проверяем есть ли такая серия в таблице sequence
-                    
-                    Добавляем новую серию в таблицу sequence (если такой еще не было) или сразу берем uid из таблицы sequence
-                    Добавляем запись в таблицу booksequence
-                '''
-
-                try:
-                    sequences = Book['Sequences']
-
-                    for sequence in Book['Sequences']:
-                        sequence_uid = tq(findrows(keyword = sequence['Name'],
-                                          showfields = ['uid'],
-                                          keyfield = 'name',
-                                          table = 'sequence'))
-
-                        #Если не нашли серию в БД
-                        if len(sequence_uid) <= 0:
-                            sequence_uid = self.tq(insertrow(table = 'sequence',
-                                                             fields = ['name'],
-                                                             values = [sequence['Name']]))
-
-                        #Добавляемсвязь серии и книги
-                        self.tq(insertrow(table = 'booksequence',
-                                          fields = ['bookid',
-                                                    'sequenceid',
-                                                    'volume'],
-                                          values = [book_uid,
-                                                    sequence_uid[0][0],
-                                                    sequence['Volume']]))
-                except:
-                    print "Ну далось получить данные по сериям книги"
-                '''
-                #------------------------------------------  
-                
-                'Publisher'
-                    Проверяем есть ли такой издатель в таблице publisher, если нет то добавляем нового издателя
-                    Получаем uid издателя
-                '''
-    #            query = findrows(keyword = Book['Publisher'],
-    #                             showfields = ['uid'],
-    #                             table = 'publisher',
-    #                             keyfield = 'name')
-    #            publisher_uid = tq(query)
-
-                #Пробуем получить описание книги
-                try:
-                    publisher = Book["Publisher"]
-                    publisher_uid = tq(findrows(keyword = publisher,
-                                             showfields = ['uid'],
-                                             keyfield = 'name',
-                                             table = 'publisher'))
-
-                    #Если не нашли издателя в БД
-                    if len(publisher_uid) <= 0:
-                        publisher_uid = tq(insertrow(table = 'publisher',
-                                                     fields = ['name'],
-                                                     values = [publisher]))
-
-                    tq(updaterow(table = 'book',
-                                 updatefields = ['publisherid'],
-                                 values = [publisher_uid[0][0]],
-                                 keyfield = 'uid',
-                                 keyword = book_uid))
-                except:
-                    print "Ну далось получить название издателя книги"
-
-
-
-                ''' 
-                #------------------------------------------
-                
-                'PubSequences'
-                    Добавляем новую серию в таблицу pubsequence (если такой еще не было) или сразу берем uid из таблицы pubsequence
-                    Добавляем запись в bookpubsequence
-                
-                    'Name' Проверяем есть ли такая серия в таблице sequence
-                    
-                    Указываем в таблице pubsequence publisherid = uid издателя из таблицы publisher
-                    
-                '''
-                try:
-                    sequences = Book['PubSequences']
-
-                    for pubsequence in Book['PubSequences']:
-                        pubsequence_uid = tq(findrows(keyword = pubsequence['Name'],
-                                          showfields = ['uid'],
-                                          keyfield = 'name',
-                                          table = 'pubsequence'))
-
-                        #Если не нашли серию в БД
-                        if len(pubsequence_uid) <= 0:
-                            pubsequence_uid = tq(insertrow(table = 'pubsequence',
-                                                           fields = ['name'],
-                                                           values = [pubsequence['Name']]))
-
-                        #Добавляемсвязь серии и книги
-                        tq(insertrow(table = 'bookpubsequence',
-                                    fields = ['bookid',
-                                              'sequenceid',
-                                            'volume'],
-                                    values = [book_uid,
-                                              pubsequence_uid[0][0],
-                                              pubsequence['Volume']]))
-                except:
-                    print "Ну далось получить данные по издательским сериям книги"
-                '''
-    
-                #------------------------------------------
-                
-                'Genres'
-                    Получаем список uid'ов из таблицы genre по полученным genrecode
-                    Добавляем записи для каждого uid в таблицу bookgenre
-                '''
-
-                print "Genres = ", Book['Genres']
-                for genre in Book['Genres']:
-                    try:
-                        genre_uid = tq(findrows(keyword = genre,
-                                                showfields = ['uid'],
-                                                keyfield = 'code',
-                                                table = 'genre'))[0][0]
-                    except:
-                        print "В книге указан не известный жанр: ", genre
-
-                    #print "genre_uid = ", genre_uid
-
-                    tq(insertrow(table = 'bookgenre',
-                                 fields = ['bookid',
-                                           'genreid'],
-                                 values = [book_uid,
-                                           genre_uid]))
-                '''
-                #------------------------------------------
-                
-                'Authors'
-                    'FirstName'
-                    'LastName'
-                    'MiddleName'
-                    'NickName'
-                    
-                    Проверяем есть ли авторы с такими firstname и lastname и middlename и nickname в таблице author
-                    Если совпадение есть то берем uid'ы авторов из таблицы author
-                        Если есть совпадение но одно из полей в таблице author не заполнено, дополняем запись в таблице author полученными значениями
-                    Если совпадений нет то создаем новых авторов в таблице author и получаем их uid'ы
-                    Добавляем записи в таблицу bookauthor
-                    
-                '''
-
-                for author in Book['Authors']:
-                    try:
-                        middle = author['MiddleName']
-                    except:
-                        middle = ''
-                    try:
-                        nick = author['NickName']
-                    except:
-                        nick = ''
-
-                    author_uid = tq(self.create_query_find_authors(lastname = author['LastName'], firstname = author['FirstName'], middlename = middle, nickname = nick))
-
-                    if len(author_uid) <= 0:
-                        author_uid = tq(insertrow(table = 'author',
-                                                  fields = ['lastname',
-                                                            'firstname',
-                                                            'middlename',
-                                                            'nickname'],
-                                                  values = [author['LastName'],
-                                                            author['FirstName'],
-                                                            middle,
-                                                            nick]))
-
-                    tq(insertrow(table = 'bookauthor',
-                                 fields = ['bookid',
-                                           'authorid'],
-                                 values = [book_uid,
-                                           author_uid[0][0]]))
-
-                tq(updaterow(table = 'book',
-                             updatefields = ['iscorrect'],
-                             values = [True],
-                             keyfield = 'uid',
-                             keyword = book_uid))
-                return True
-            else:
-                return False
-            #------------------------------------------
-        else:
             return False
 
+        #Проверь есть ли книга с таким id в БД
+        if(self.check_value_exist('book', "fb2id", Book["ID"])):
+            exists = True
+            print "Запись в БД уже существует"
+            #Проверь верcию книги, если книга уже есть в БД
+            if(self.check_value_bigger('book', 'version', Book["Version"], 'fb2id', Book["ID"])):
+                print "Добавляемая книга имеет более новую версию"
+                newer_version = True
+            else:
+                print "Добавляемая книга имеет такую же версию или более раннюю"
+                newer_version = False
+                iscorrect = self.check_book_iscorrect(Book["ID"])
+                if (not iscorrect):
+                    #Удаляем существующую запись о книге из БД из всех связных таблиц
+                    print "Ошибка. Запись в БД по книге не корректна. Будет удален файл и мета-данные"
+                    self.delete_book(Book['ID'])
+                    exists = False
+        else:
+            exists = False
+
+        #Добавь мета-данные книги в БД, если ее нет в базе, или книга имеет более новую версию чем существующая в БД
+        if (not exists) or newer_version:
+            #Формируем запрос к БД
+
+            '''
+            #------------------------------------------  
+            
+            Используемые таблицы
+            
+            book
+                bookauthor
+            author
+            genre
+                bookgenre
+            sequence
+                booksequence
+            pubsequence
+                bookpubsequence
+            publisher
+            lang
+             
+            #------------------------------------------       
+            
+            Структура мета-данных книги
+            
+            #------------------------------------------
+            
+            'ID' 
+                Проверяем существет ли такая книга в БД
+            
+            'Version'
+                Проверяем версию книги
+                
+            Добавляем простые поля книги в таблицу book 
+            'ID' в fb2id
+            'Version' в version
+            'Title' в title
+            'Annotation' в annotation
+            'CoverFile' в coverfile
+            'CoverExist' в coverexist
+            'ZipFile' в zipfile
+                 Просто записываем значения в таблицу book
+                 
+            '''
+            book_uid = tq(insertrow(table = 'book',
+                                    fields = ['fb2id',
+                                              'iscorrect',
+                                              'version',
+                                              'encoding',
+                                              'title',
+                                              'coverfile',
+                                              'coverexist',
+                                              'zipfile'],
+                                    values = [Book["ID"],
+                                              False,
+                                              Book["Version"],
+                                              Book["Encoding"],
+                                              Book["Title"],
+                                              Book["CoverFile"],
+                                              Book["CoverExist"],
+                                              Book["ZipFile"]]))[0][0]
+
+            #Пробуем получить описание книги
+            try:
+                annotation = Book["Annotation"]
+                tq(updaterow(table = 'book',
+                         updatefields = ['annotation'],
+                         values = [annotation]),
+                         keyfield = 'uid',
+                         keyword = book_uid)
+            except:
+                print "Ну далось получить описание книги"
+
+            '''
+                 
+            Получаем uid новой книги из таблицы book по добавленному fb2id 
+                
+            #------------------------------------------
+            
+            'Lang' 
+                Находим uid языка из таблицы language
+                Ищем uid по полям altercode1, altercode2, langcode
+                Записываем в таблицу book
+            '''
+
+            lang_uid = tq(findrows(keyword = Book['Lang'],
+                                   showfields = ['uid'],
+                                   keyfield = 'langcode',
+                                   table = 'language'))
+
+            tq(updaterow(table = 'book',
+                         updatefields = ['langid'],
+                         values = [lang_uid[0][0]],
+                         keyfield = 'uid',
+                         keyword = book_uid))
+            '''
+            #------------------------------------------
+            
+            'Sequences'
+                'Name' Проверяем есть ли такая серия в таблице sequence
+                
+                Добавляем новую серию в таблицу sequence (если такой еще не было) или сразу берем uid из таблицы sequence
+                Добавляем запись в таблицу booksequence
+            '''
+
+            try:
+                sequences = Book['Sequences']
+
+                for sequence in Book['Sequences']:
+                    sequence_uid = tq(findrows(keyword = sequence['Name'],
+                                      showfields = ['uid'],
+                                      keyfield = 'name',
+                                      table = 'sequence'))
+
+                    #Если не нашли серию в БД
+                    if len(sequence_uid) <= 0:
+                        sequence_uid = self.tq(insertrow(table = 'sequence',
+                                                         fields = ['name'],
+                                                         values = [sequence['Name']]))
+
+                    #Добавляемсвязь серии и книги
+                    self.tq(insertrow(table = 'booksequence',
+                                      fields = ['bookid',
+                                                'sequenceid',
+                                                'volume'],
+                                      values = [book_uid,
+                                                sequence_uid[0][0],
+                                                sequence['Volume']]))
+            except:
+                print "Ну далось получить данные по сериям книги"
+            '''
+            #------------------------------------------  
+            
+            'Publisher'
+                Проверяем есть ли такой издатель в таблице publisher, если нет то добавляем нового издателя
+                Получаем uid издателя
+            '''
+#            query = findrows(keyword = Book['Publisher'],
+#                             showfields = ['uid'],
+#                             table = 'publisher',
+#                             keyfield = 'name')
+#            publisher_uid = tq(query)
+
+            #Пробуем получить описание книги
+            try:
+                publisher = Book["Publisher"]
+                publisher_uid = tq(findrows(keyword = publisher,
+                                         showfields = ['uid'],
+                                         keyfield = 'name',
+                                         table = 'publisher'))
+
+                #Если не нашли издателя в БД
+                if len(publisher_uid) <= 0:
+                    publisher_uid = tq(insertrow(table = 'publisher',
+                                                 fields = ['name'],
+                                                 values = [publisher]))
+
+                tq(updaterow(table = 'book',
+                             updatefields = ['publisherid'],
+                             values = [publisher_uid[0][0]],
+                             keyfield = 'uid',
+                             keyword = book_uid))
+            except:
+                print "Ну далось получить название издателя книги"
+
+
+
+            ''' 
+            #------------------------------------------
+            
+            'PubSequences'
+                Добавляем новую серию в таблицу pubsequence (если такой еще не было) или сразу берем uid из таблицы pubsequence
+                Добавляем запись в bookpubsequence
+            
+                'Name' Проверяем есть ли такая серия в таблице sequence
+                
+                Указываем в таблице pubsequence publisherid = uid издателя из таблицы publisher
+                
+            '''
+            try:
+                sequences = Book['PubSequences']
+
+                for pubsequence in Book['PubSequences']:
+                    pubsequence_uid = tq(findrows(keyword = pubsequence['Name'],
+                                      showfields = ['uid'],
+                                      keyfield = 'name',
+                                      table = 'pubsequence'))
+
+                    #Если не нашли серию в БД
+                    if len(pubsequence_uid) <= 0:
+                        pubsequence_uid = tq(insertrow(table = 'pubsequence',
+                                                       fields = ['name'],
+                                                       values = [pubsequence['Name']]))
+
+                    #Добавляемсвязь серии и книги
+                    tq(insertrow(table = 'bookpubsequence',
+                                fields = ['bookid',
+                                          'sequenceid',
+                                        'volume'],
+                                values = [book_uid,
+                                          pubsequence_uid[0][0],
+                                          pubsequence['Volume']]))
+            except:
+                print "Ну далось получить данные по издательским сериям книги"
+            '''
+
+            #------------------------------------------
+            
+            'Genres'
+                Получаем список uid'ов из таблицы genre по полученным genrecode
+                Добавляем записи для каждого uid в таблицу bookgenre
+            '''
+
+            print "Genres = ", Book['Genres']
+            for genre in Book['Genres']:
+                try:
+                    genre_uid = tq(findrows(keyword = genre,
+                                            showfields = ['uid'],
+                                            keyfield = 'code',
+                                            table = 'genre'))[0][0]
+                except:
+                    print "В книге указан не известный жанр: ", genre
+
+                #print "genre_uid = ", genre_uid
+
+                tq(insertrow(table = 'bookgenre',
+                             fields = ['bookid',
+                                       'genreid'],
+                             values = [book_uid,
+                                       genre_uid]))
+            '''
+            #------------------------------------------
+            
+            'Authors'
+                'FirstName'
+                'LastName'
+                'MiddleName'
+                'NickName'
+                
+                Проверяем есть ли авторы с такими firstname и lastname и middlename и nickname в таблице author
+                Если совпадение есть то берем uid'ы авторов из таблицы author
+                    Если есть совпадение но одно из полей в таблице author не заполнено, дополняем запись в таблице author полученными значениями
+                Если совпадений нет то создаем новых авторов в таблице author и получаем их uid'ы
+                Добавляем записи в таблицу bookauthor
+                
+            '''
+
+            for author in Book['Authors']:
+                try:
+                    middle = author['MiddleName']
+                except:
+                    middle = ''
+                try:
+                    nick = author['NickName']
+                except:
+                    nick = ''
+
+                author_uid = tq(self.create_query_find_authors(lastname = author['LastName'], firstname = author['FirstName'], middlename = middle, nickname = nick))
+
+                if len(author_uid) <= 0:
+                    author_uid = tq(insertrow(table = 'author',
+                                              fields = ['lastname',
+                                                        'firstname',
+                                                        'middlename',
+                                                        'nickname'],
+                                              values = [author['LastName'],
+                                                        author['FirstName'],
+                                                        middle,
+                                                        nick]))
+
+                tq(insertrow(table = 'bookauthor',
+                             fields = ['bookid',
+                                       'authorid'],
+                             values = [book_uid,
+                                       author_uid[0][0]]))
+
+            tq(updaterow(table = 'book',
+                         updatefields = ['iscorrect'],
+                         values = [True],
+                         keyfield = 'uid',
+                         keyword = book_uid))
+            return True
+        else:
+            return False
+        #------------------------------------------
 
         #cur.execute("INSERT INTO book (apoint) VALUES (%s)",
         #    ...             (Point(1.23, 4.56),))
@@ -571,7 +568,7 @@ class DBManager:
         middlename = kwargs['middlename']
         nickname = kwargs['nickname']
 
-        query_str = 'SELECT uid FROM author WHERE lastname LIKE \'%{0}%\' AND firstname LIKE \'%{1}%\' AND middlename LIKE \'%{2}%\' AND nickname LIKE \'%{3}%\''.format(lastname, firstname, middlename, nickname)
+        query_str = adapt("SELECT uid FROM author WHERE lastname LIKE %{0}% AND firstname LIKE %{1}% AND middlename LIKE %{2}% AND nickname LIKE %{3}%".format(lastname, firstname, middlename, nickname))
         #print query_str
 
         return query_str
@@ -582,10 +579,10 @@ class DBManager:
     #Правильно?
     @usedb
     def check_book_iscorrect(self, db, fb2id):
-        select_query = "SELECT iscorrect from book WHERE fb2id = \'{0}\'".format(fb2id)
+        select_query = adapt("SELECT iscorrect from book WHERE fb2id = {0}".format(mq(fb2id)))
         select_result = db.select_value(select_query)
 
-        #print select_result
+        print select_result
 
         return bool(select_result)
 
@@ -593,10 +590,11 @@ class DBManager:
     #Существует?
     @usedb
     def check_value_exist(self, db, table, field, value):
-        select_query = "SELECT count(*) from {0} WHERE {1} = \'{2}\'".format(table, field, value)
+        select_query = adapt("SELECT count(*) from {0} WHERE {1} = {2}".format(table, field, mq(value)))
+        print "select_query = ", select_query
         select_result = db.select_value(select_query)
 
-        #print select_result
+        print "select_result = ", select_result
 
         if int(select_result) > 0:
             return True
@@ -607,9 +605,10 @@ class DBManager:
     #Больше?
     @usedb
     def check_value_bigger(self, db, table, field, value, id_name, id_value):
-        select_query = "SELECT {0} from {1} WHERE {2} = \'{3}\'".format(field, table, id_name, id_value)
+        select_query = adapt("SELECT {0} from {1} WHERE {2} = {3}".format(field, table, id_name, mq(id_value)))
+        print "select_query = ", select_query
         select_result = db.select_value(select_query)
-
+        print "select_result = ", select_result
         if float(value) > float(select_result):
             return True
         else:
@@ -618,7 +617,9 @@ class DBManager:
     #Генератор SQL-запроса для поиска подстроки keyword в поле field в таблице table c необязательным упорядочиванием по orderfield
     def create_query_find_rows(self, *args, **kwargs):
         #Если orderfield не передано или пусто то используем сортировку по алфавиту
-        keyword = kwargs['keyword'] #Ключевое слово для поиска
+
+        keyword = mq(kwargs['keyword']) #Ключевое слово для поиска
+
         showfields = ', '.join(kwargs['showfields']) #Поля таблицы которые нужно вывести в поиске
         keyfield = kwargs['keyfield'] #Поле таблицы по которому необходимо производить поиск
         table = kwargs['table'] #Имя таблицы в которой будет производиться поиск
@@ -629,8 +630,8 @@ class DBManager:
         except:
             orderfield = " "
 
-        query_str = 'SELECT {0} FROM {1} WHERE {2} LIKE \'%{3}%\' {4}'.format(showfields, table, keyfield, keyword, orderfield)
-        print query_str
+        query_str = adapt("SELECT {0} FROM {1} WHERE {2} LIKE %{3}% {4}".format(showfields, table, keyfield, keyword, orderfield))
+        print "query_str = ", query_str
 
         return query_str
 
@@ -638,7 +639,8 @@ class DBManager:
     def create_query_delete_rows(self, *args, **kwargs):
         table = kwargs['table']                 #Имя таблицы
         field = kwargs['field']    #Поля которым необходимо присвоить значения
-        str_values = ["\'{0}\'".format(str(val)) for val in kwargs['values']] #Конвертируем все значения в строки
+
+        str_values = ["\'{0}\'".format(mq(str(val))) for val in kwargs['values']] #Конвертируем все значения в строки
 
         #print "str_values = ", str_values
         values = ', '.join(str_values)    #Значения полей
@@ -646,8 +648,8 @@ class DBManager:
 
         #print fields
         #print values
-        query_str = "DELETE FROM {0} WHERE {1} IN ({2}) RETURNING uid;".format(table, field, values)
-        #print query_str
+        query_str = adapt("DELETE FROM {0} WHERE {1} IN ({2}) RETURNING uid;".format(table, field, values))
+        print "query_str = ", query_str
 
         return query_str
 
@@ -655,15 +657,12 @@ class DBManager:
     def create_query_insert_row(self, *args, **kwargs):
         table = kwargs['table']                 #Имя таблицы
         fields = ', '.join(kwargs['fields'])    #Поля которым необходимо присвоить значения
-        str_values = ["\'{0}\'".format(str(val)) for val in kwargs['values']] #Конвертируем все значения в строки
-        print "str_values = ", str_values
+
+        str_values = ["\'{0}\'".format(mq(str(val))) for val in kwargs['values']] #Конвертируем все значения в строки
         values = ', '.join(str_values)    #Значения полей
 
-
-        #print fields
-        #print values
-        query_str = "INSERT INTO {0} ({1}) VALUES ({2}) RETURNING uid;".format(table, fields, values)
-        #print query_str
+        query_str = adapt("INSERT INTO {0} ({1}) VALUES ({2}) RETURNING uid;".format(table, fields, values))
+        print "query_str = ", query_str
 
         return query_str
 
@@ -672,21 +671,24 @@ class DBManager:
         table = kwargs['table']                 #Имя таблицы
         updatefields = kwargs['updatefields']   #Поля которым необходимо присвоить значения
 
-
-        keyword = kwargs['keyword'] #Ключевое слово для поиска
+        keyword = mq(kwargs['keyword']) #Ключевое слово для поиска
         keyfield = kwargs['keyfield'] #Поле таблицы по которому необходимо производить поиск
-
-        #values = ', '.join(kwargs['values'])    #Новые значения
         values = kwargs['values']    #Новые значения
+
         setvalues_array = []
         for f, v in itertools.izip(updatefields, values):
-            setvalues_array.append("{0} = {1}".format(f, v))
+            setvalues_array.append("{0} = {1}".format(f, mq(v)))
         setvalues = ', '.join(setvalues_array)
+
+        query_str = adapt("UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, str(keyword)))
+
+        '''
         if type(keyword) == int:
-            query_str = "UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, keyword)
+            query_str = adapt("UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, str(keyword)))
         else:
-            query_str = "UPDATE {0} SET {1} WHERE {2} = \'{3}\';".format(table, setvalues, keyfield, keyword)
-        #print query_str
+            query_str = adapt("UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, keyword))
+        print "query_str = ", query_str
+        '''
 
         return query_str
 
@@ -702,11 +704,11 @@ class DBManager:
 
         with open(sqlsource, 'r') as fquery:
             myquery = fquery.read()
-            print myquery
+            #print "query_str = ", myquery
 
-        mycursor = db.cursor() #.select_all('SELECT count(*) FROM author;')
+        mycursor = db.cursor()
         myquery = myquery
-        mycursor.execute(myquery)
+        mycursor.execute(adapt(myquery))
 
         print u"Таблицы созданы"
 
@@ -722,7 +724,7 @@ class DBManager:
 
         with open(sqlsource, 'r') as fquery:
             myquery = fquery.read()
-            print myquery
+            #print "query_str = ", myquery
 
         mycursor = db.cursor()
         myquery = myquery

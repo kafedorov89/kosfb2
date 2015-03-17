@@ -9,6 +9,7 @@ import shutil
 import zipfile
 import os
 import uuid
+from fb2tools import decodestr as ds
 #import DBManager
 
 #Тестовая функция для вывода полученных метаданных по книге
@@ -19,6 +20,8 @@ class FileParser:
         self.mainfolder = args[0]
         #Указыаем каталог, куда будем складывать разобранные книги в архивах с обложками
         self.destfolder = args[1]
+        self.callcount = 0
+        self.errorcount = 0
         #print "foldername = ", self.mainfolder
 
     def show_book_info(self, Book):
@@ -26,6 +29,7 @@ class FileParser:
 
     #Парсер для одной итерации. Разбирает передаваемый ему filename и возвращает словарь Book с метаданными
     def one_book_parser(self, filepath):
+        self.callcount = self.callcount + 1
         Book = {}
         Annotation = ""
         Genres = []
@@ -63,241 +67,273 @@ class FileParser:
         #В корне файла fb2 находим тег description в котором и лежит нужная информация о книге
         try:
             description = book.getroot().find(ns + "description/")
-            fb2scheme = True
         except:
-            fb2scheme = False
+            self.errorcount = self.errorcount + 1
+
             print "Ошибка. В файле fb2 отсутствует раздел description"
+            return {}
 
-        if fb2scheme:
-            #Получаем ссылку на корень дерева XML
-            bookchilds = book.getroot()
-            #--------------------------------------------------------------------------------------------------------
-            #Перебираем все теги ВЕРХНЕГО уровня
+        #Получаем ссылку на корень дерева XML
+        bookchilds = book.getroot()
+        #--------------------------------------------------------------------------------------------------------
+        #Перебираем все теги ВЕРХНЕГО уровня
 
-            for child1 in bookchilds:
-                #print "book childs: ", child1.tag
-                #Перебираем теги ВТОРГО уровня пока не найдем раздел "title-info"
-                for child2 in child1:
-                    #--------------------------------------------------------------------------------------------------------
-                    #Находим раздел "title-info"
-                    if (ns + "title-info" == child2.tag):
-                        #print "    title-info child: ", child2.tag
-                        titleinfo = child2
-                        for itag in titleinfo:
-                            #--------------------------------------------------------------------------------------------------------
-                            #Узнаем на каком ЯЗЫКЕ написана книга
-                            if (ns + "lang" == itag.tag):
+        for child1 in bookchilds:
+            #print "book childs: ", child1.tag
+            #Перебираем теги ВТОРОГО уровня пока не найдем раздел "title-info"
+            for child2 in child1:
+                #--------------------------------------------------------------------------------------------------------
+                #Находим раздел "title-info"
+                if (ns + "title-info" == child2.tag):
+                    #print "    title-info child: ", child2.tag
+                    titleinfo = child2
+                    for itag in titleinfo:
+                        #--------------------------------------------------------------------------------------------------------
+                        #Узнаем на каком ЯЗЫКЕ написана книга
+                        if (ns + "lang" == itag.tag):
+                            try:
                                 print "Язык книги: ", itag.text.encode(encoding, 'ignore')
                                 Book["Lang"] = itag.text.encode(encoding, 'ignore')
-                            #--------------------------------------------------------------------------------------------------------
-                            #Узнаем к какой СЕРИИ относится книга
-                            if (ns + "sequence" == itag.tag):
-                                Sequence = {}
-                                sequence = itag
-                                print "Книга относится к серии"
-                                print "Серия книги: ", sequence.attrib["name"].encode(encoding, 'ignore')
-                                Sequence["Name"] = sequence.attrib["name"].encode(encoding, 'ignore')
-                                try:
-                                    Sequence["Volume"] = sequence.attrib["number"].encode(encoding, 'ignore')
-                                    print "Tom: ", Sequence["Volume"], "из серии"
-                                except:
-                                    Sequence["Volume"] = 1
-                                    print "Номер тома в серии не определен"
+                            except:
+                                print "Ошибка. Язык книги не определен"
 
-                                Sequences.append(Sequence) # Добавляем еще одну серию, в которую входит книга
+                        #--------------------------------------------------------------------------------------------------------
+                        #Узнаем к какой СЕРИИ относится книга
+                        if (ns + "sequence" == itag.tag):
+                            Sequence = {}
+                            sequence = itag
+                            print "Книга относится к серии"
 
-                        Book["Sequences"] = Sequences # Упаковываем все найденные серии в структуру книги
-                    #--------------------------------------------------------------------------------------------------------
-                    #Находим раздел "publish-info"
-                    if (ns + "publish-info" == child2.tag):
-                        #print "    publish-info child: ", child2.tag
-                        publishinfo = child2
-                        for itag in publishinfo:
-                            #--------------------------------------------------------------------------------------------------------
+                            try:
+                                Sequence["Name"] = ds(sequence.attrib["name"])
+                                print "Серия книги: ", ds(sequence.attrib["name"])
+                            except:
+                                print "Ошибка. Название серии не распознано"
 
-                            #Узнаем к какой ИЗДАТЕЛЬСКОЙ СЕРИИ относится книга
-                            if (ns + "sequence" == itag.tag):
-                                PubSequence = {}
-                                publish_sequence = itag
-                                print "Книга относится к издательской серии"
-                                print "Издательская серия книги: ", publish_sequence.attrib["name"].encode(encoding, 'ignore')
-                                PubSequence["Name"] = publish_sequence.attrib["name"].encode(encoding, 'ignore')
+                            try:
+                                Sequence["Volume"] = ds(sequence.attrib["number"])
+                                print "Tom: ", Sequence["Volume"], "из серии"
+                            except:
+                                Sequence["Volume"] = 1
+                                print "Ошибка. Номер тома в серии не определен"
 
-                                try:
-                                    PubSequence["Volume"] = publish_sequence.attrib["number"].encode(encoding, 'ignore')
-                                    print "Tom: ", PubSequence["Volume"], "из серии"
-                                except:
-                                    PubSequence["Volume"] = 1
-                                    print "Номер тома в издательской серии не определен"
+                            Sequences.append(Sequence) # Добавляем еще одну серию, в которую входит книга
+
+                    Book["Sequences"] = Sequences # Упаковываем все найденные серии в структуру книги
+                #--------------------------------------------------------------------------------------------------------
+                #Находим раздел "publish-info"
+                if (ns + "publish-info" == child2.tag):
+                    #print "    publish-info child: ", child2.tag
+                    publishinfo = child2
+                    for itag in publishinfo:
+                        #--------------------------------------------------------------------------------------------------------
+
+                        #Узнаем к какой ИЗДАТЕЛЬСКОЙ СЕРИИ относится книга
+                        if (ns + "sequence" == itag.tag):
+                            PubSequence = {}
+                            publish_sequence = itag
+                            print "Книга относится к издательской серии"
+
+                            try:
+                                print "Издательская серия книги: ", ds(publish_sequence.attrib["name"])
+                                PubSequence["Name"] = ds(publish_sequence.attrib["name"])
+                            except:
+                                print "Ошибка. Название издательской серии не распознано"
+
+                            try:
+                                PubSequence["Volume"] = ds(publish_sequence.attrib["number"])
+                                print "Tom: ", PubSequence["Volume"], "из серии"
+                            except:
+                                PubSequence["Volume"] = 1
+                                print "Ошибка. Номер тома в издательской серии не определен. По умочланию установлен 1-ый том"
 
 
-                                PubSequences.append(PubSequence) # Добавляем еще одну издательскую серию, в которую входит книга
+                            PubSequences.append(PubSequence) # Добавляем еще одну издательскую серию, в которую входит книга
 
-                            #Узнаем название ИЗДАТЕЛЬСТВА книги
-                            if (ns + "publisher" == itag.tag):
-                                PubSequence = {}
-                                publisher = itag
-                                print "В книге указано издательство"
-                                print 'publisher = ', publisher
-                                try:
-                                    Book["Publisher"] = publisher.text.encode(encoding, 'ignore')
-                                except:
-                                    Book["Publisher"] = publisher.text
-                                #Book["Publisher"] = publisher.text.encode(encoding, 'ignore')
+                        #Узнаем название ИЗДАТЕЛЬСТВА книги
+                        if (ns + "publisher" == itag.tag):
+                            PubSequence = {}
+                            publisher = itag
+                            print "В книге указано издательство"
+                            print 'publisher = ', publisher
+                            try:
+                                Book["Publisher"] = ds(publisher.text)
                                 print "Издательство: ", Book["Publisher"]
+                            except:
+                                print "Ошибка. Название издательства не распознано"
 
-                        Book["PubSequences"] = PubSequences # Упаковываем все найденные издательские серии в структуру книги
-                    #--------------------------------------------------------------------------------------------------------
-                    if (ns + "document-info" == child2.tag):
-                        #print "    document-info child: ", child2.tag
-                        docinfo = child2
-                        for itag in docinfo:
-                            #--------------------------------------------------------------------------------------------------------
-                            #Узнаем на УНИКАЛЬНЫЙ ID книги
-                            if (ns + "id" == itag.tag):
-                                Book["ID"] = itag.text.encode(encoding, 'ignore')
-                                print "ID книги: ", Book["ID"]
-                            #--------------------------------------------------------------------------------------------------------
-                            #Узнаем ВЕРСИЮ книги
-                            if (ns + "version" == itag.tag):
-                                Book["Version"] = itag.text.encode(encoding, 'ignore')
+
+                    Book["PubSequences"] = PubSequences # Упаковываем все найденные издательские серии в структуру книги
+                #--------------------------------------------------------------------------------------------------------
+                if (ns + "document-info" == child2.tag):
+                    #print "    document-info child: ", child2.tag
+                    docinfo = child2
+                    for itag in docinfo:
+                        #--------------------------------------------------------------------------------------------------------
+                        #Узнаем на УНИКАЛЬНЫЙ ID книги
+                        if (ns + "id" == itag.tag):
+                            Book["ID"] = ds(itag.text)
+                            print "ID книги: ", Book["ID"]
+
+                            try:
+                                Book['ID']
+                            except:
+                                print "Ошибка. Не найден ID книги"
+                                return {}
+                        #--------------------------------------------------------------------------------------------------------
+                        #Узнаем ВЕРСИЮ книги
+                        if (ns + "version" == itag.tag):
+                            try:
+                                Book["Version"] = ds(itag.text)
                                 print "Версия книги: ", Book["Version"]
-            #--------------------------------------------------------------------------------------------------------
-            #Получаем НАЗВАНИЕ книги
-            for title in description.findall(ns + "book-title"):
-                newbooktitle = title.text.encode(encoding, 'ignore') # Пробуем получить название книги, не смотря ни на что
-                Book["Title"] = newbooktitle
-                print "Название книги: " + newbooktitle
-                #print "Название книги: " + description.findall(ns + "book-title")[0].text #Альтернативный вариант доступа к элементу
-                #print "Название книги: " + description.find(ns + "book-title").text #Альтернативный вариант доступа к элементу
-            #--------------------------------------------------------------------------------------------------------
-            #Получаем список ЖАНРОВ в которых написана книга
-            for genre in description.findall(ns + "genre"):
-                try:
-                    newgenre = genre.text.encode(encoding, 'ignore')
-                except:
-                    newgenre = genre.text
+                            except:
+                                print "Ошибка. Не найдена версия книги"
+                                return {}
+
+
+        #--------------------------------------------------------------------------------------------------------
+        #Получаем НАЗВАНИЕ книги
+        for title in description.findall(ns + "book-title"):
+            try:
+                Book["Title"] = ds(title.text) # Пробуем получить название книги, не смотря ни на что
+                print "Название книги: " + Book["Title"]
+            except:
+                print "Ошибка. Не найдено название книги"
+                return {}
+
+            #print "Название книги: " + description.findall(ns + "book-title")[0].text #Альтернативный вариант доступа к элементу
+            #print "Название книги: " + description.find(ns + "book-title").text #Альтернативный вариант доступа к элементу
+        #--------------------------------------------------------------------------------------------------------
+        #Получаем список ЖАНРОВ в которых написана книга
+        for genre in description.findall(ns + "genre"):
+
+            try:
+                newgenre = ds(genre.text)
                 Genres.append(newgenre) #Добавляем еще один жанр, к которому относится книга
                 print "Жанр книги: ", newgenre
+            except:
+                print "Ошибка. Название жанра не распознано"
 
+        if len(Genres) > 0:
             Book["Genres"] = Genres
-            #--------------------------------------------------------------------------------------------------------
-            #Получаем АННОТАЦИЮ к книге
-            for annotation in description.findall(ns + "annotation"):
-                for child in annotation:
-                    try:
-                        childtext = child.text.encode(encoding, 'ignore') #Пробуем получить очередную строку из тега <annotation>
-                    except:
-                        pass
-                    #print "Test: ", childtext
+        #--------------------------------------------------------------------------------------------------------
+        #Получаем АННОТАЦИЮ к книге
+        for annotation in description.findall(ns + "annotation"):
+            for child in annotation:
+                try:
+                    childtext = ds(child.text) #Пробуем получить очередную строку из тега <annotation>
+                except:
+                    pass
 
-                    if (child is not None) and childtext:
-                        Annotation += childtext
-                    Book["Annotation"] = Annotation
-            print "Описание книги: " + Annotation
-            #--------------------------------------------------------------------------------------------------------
-            #Собираем всех АВТОРОВ в список
-            i = 0
-            author_prefix = ['Первый', 'Второй', 'Третий', 'Четвертый']
-            for author in description.findall(ns + "author"):
-                Author = {}
-                author_first_name = author.find(ns + "first-name")
-                if author_first_name is not None:
-                    Author['FirstName'] = author_first_name.text.encode(encoding, 'ignore')
-                author_last_name = author.find(ns + "last-name")
-                if author_last_name is not None:
-                    Author['LastName'] = author_last_name.text.encode(encoding, 'ignore')
-                author_middle_name = author.find(ns + "middle-name")
-                if author_middle_name is not None:
-                    Author['MiddleName'] = author_middle_name.text.encode(encoding, 'ignore')
-                author_nick_name = author.find(ns + "nickname")
-                if author_nick_name is not None:
-                    Author['NickName'] = author_nick_name.text.encode(encoding, 'ignore')
-                Authors.append(Author) #Добавляем еще одного автора в список
-                print author_prefix[i], " автор: ",
-                try:
-                    print Author['FirstName'],
-                except:
-                    pass
-                try:
-                    print Author['LastName'],
-                except:
-                    pass
-                try:
-                    print Author['MiddleName'],
-                except:
-                    pass
-                try:
-                    print Author['NickName']
-                except:
-                    pass
-                i += 1
-            Book["Authors"] = Authors
+                if (child is not None) and isinstance(childtext, str):
+                    Annotation = "{0} {1}".format(Annotation, childtext)
 
-            print "" #Для переноса стоки
-            #С текстовыми полями покончено
-            #--------------------------------------------------------------------------------------------------------
-            #Принимаемся за обложку
+                Book["Annotation"] = Annotation
+        print "Описание книги: ", Annotation
+        #--------------------------------------------------------------------------------------------------------
+        #Собираем всех АВТОРОВ в список
+        i = 0
+        author_prefix = ['Первый', 'Второй', 'Третий', 'Четвертый']
+        for author in description.findall(ns + "author"):
+            Author = {}
+            author_first_name = author.find(ns + "first-name")
+            if author_first_name is not None:
+                Author['FirstName'] = ds(author_first_name.text)
+            author_last_name = author.find(ns + "last-name")
+            if author_last_name is not None:
+                Author['LastName'] = ds(author_last_name.text)
+            author_middle_name = author.find(ns + "middle-name")
+            if author_middle_name is not None:
+                Author['MiddleName'] = ds(author_middle_name.text)
+            author_nick_name = author.find(ns + "nickname")
+            if author_nick_name is not None:
+                Author['NickName'] = ds(author_nick_name.text)
+            Authors.append(Author) #Добавляем еще одного автора в список
+            print author_prefix[i], " автор: ",
             try:
-                binary = book.find(ns + "binary")
-                bincover = base64.b64decode(binary.text) #Конвертируем обложку из base64 для записи в файл
-                conttype = binary.attrib["content-type"] #Получаем тип изображения обложки (jpg или png)
-
-                if (conttype == 'image/jpeg'):
-                    print "Найдено изображение типа: jpeg"
-                    #coverfile = "../tmpbook/" + Book['ID'] + "_cover.jpg"
-                    coverfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".jpg"))
-                    coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в jpg
-                elif (conttype == 'image/png'):
-                    #coverfile = "../tmpbook/" + Book['ID'] + "_cover.png"
-                    coverfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".png"))
-                    coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в png
-                    print "Найдено изображение типа: png"
-
-                coverimg.write(bincover) #Записываем в файл обложки в побитовом режиме
-                coverimg.close() #Закрываем файл обложки для записи
-
-                coverexist = True
-                #print binary.text #Выводим на экран бинарное представление jpg изображения, вложенного в fb2 файл
+                print Author['FirstName'],
             except:
-                coverfile = os.path.join(self.destfolder, "default.jpg")
-                print "Обложка не найдена в файле"
-                coverexist = False
-
-            Book["CoverExist"] = coverexist
-            Book["CoverFile"] = coverfile
-
-            #Завершаем запись обложки
-            #--------------------------------------------------------------------------------------------------------
-            #Копируем файл книги с новым названием и кладем рядом с обложкой во временный каталог
-            newbookfile = os.path.join("{0}{1}".format(Book['ID'], ".fb2"))
-            newbookzipfile = os.path.join("{0}{1}".format(Book['ID'], ".zip"))
-            print newbookfile
-            if(os.path.exists(newbookfile)):
-                print "Временный файл книги уже существует и будет заменен на более новый"
-                os.remove(newbookfile) #Удаляем файл с временной книгой
-
-            if(os.path.exists(newbookzipfile)):
-                print "Временный файл архива книги уже существует и будет заменен на более новый"
-                os.remove(newbookzipfile) #Удаляем файл с временным
-
-            shutil.copy(filepath, newbookfile)
-            #--------------------------------------------------------------------------------------------------------
-            #Упаковываем файл книги в архив
+                pass
             try:
-                with zipfile.ZipFile(newbookzipfile, 'w') as myzip:
-                    myzip.write(newbookfile)
-                    myzip.close()
-                    shutil.copy(newbookzipfile, self.destfolder)
-                    os.remove(newbookzipfile)
-                    os.remove(newbookfile)
-                    Book["ZipFile"] = os.path.join(self.destfolder, newbookzipfile)
+                print Author['LastName'],
             except:
-                print "Архив с файлом fb2 создать не удалось"
-            #--------------------------------------------------------------------------------------------------------
-            #Удаляем файл с временной книгой после ее упаковки в архив
-            if(os.path.exists(newbookfile)):
+                pass
+            try:
+                print Author['MiddleName'],
+            except:
+                pass
+            try:
+                print Author['NickName']
+            except:
+                pass
+            i += 1
+        Book["Authors"] = Authors
+
+        print "" #Для переноса стоки
+        #С текстовыми полями покончено
+        #--------------------------------------------------------------------------------------------------------
+        #Принимаемся за обложку
+        try:
+            binary = book.find(ns + "binary")
+            bincover = base64.b64decode(binary.text) #Конвертируем обложку из base64 для записи в файл
+            conttype = binary.attrib["content-type"] #Получаем тип изображения обложки (jpg или png)
+
+            if (conttype == 'image/jpeg'):
+                print "Найдено изображение типа: jpeg"
+                #coverfile = "../tmpbook/" + Book['ID'] + "_cover.jpg"
+                coverfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".jpg"))
+                coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в jpg
+            elif (conttype == 'image/png'):
+                #coverfile = "../tmpbook/" + Book['ID'] + "_cover.png"
+                coverfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".png"))
+                coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в png
+                print "Найдено изображение типа: png"
+
+            coverimg.write(bincover) #Записываем в файл обложки в побитовом режиме
+            coverimg.close() #Закрываем файл обложки для записи
+
+            coverexist = True
+            #print binary.text #Выводим на экран бинарное представление jpg изображения, вложенного в fb2 файл
+        except:
+            coverfile = os.path.join(self.destfolder, "default.jpg")
+            print "Обложка не найдена в файле"
+            coverexist = False
+
+        Book["CoverExist"] = coverexist
+        Book["CoverFile"] = coverfile
+
+        #Завершаем запись обложки
+        #--------------------------------------------------------------------------------------------------------
+        #Копируем файл книги с новым названием и кладем рядом с обложкой во временный каталог
+        newbookfile = os.path.join("{0}{1}".format(Book['ID'], ".fb2"))
+        newbookzipfile = os.path.join("{0}{1}".format(Book['ID'], ".zip"))
+        print newbookfile
+        if(os.path.exists(newbookfile)):
+            print "Временный файл книги уже существует и будет заменен на более новый"
+            os.remove(newbookfile) #Удаляем файл с временной книгой
+
+        if(os.path.exists(newbookzipfile)):
+            print "Временный файл архива книги уже существует и будет заменен на более новый"
+            os.remove(newbookzipfile) #Удаляем файл с временным
+
+        shutil.copy(filepath, newbookfile)
+        #--------------------------------------------------------------------------------------------------------
+        #Упаковываем файл книги в архивк
+        try:
+            with zipfile.ZipFile(newbookzipfile, 'w') as myzip:
+                myzip.write(newbookfile)
+                myzip.close()
+                shutil.copy(newbookzipfile, self.destfolder)
+                os.remove(newbookzipfile)
                 os.remove(newbookfile)
+                Book["ZipFile"] = os.path.join(self.destfolder, newbookzipfile)
+        except:
+            print "Архив с файлом fb2 создать не удалось"
+            return {}
+        #--------------------------------------------------------------------------------------------------------
+        #Удаляем файл с временной книгой после ее упаковки в архив
+        if(os.path.exists(newbookfile)):
+            os.remove(newbookfile)
 
         return Book #Возвращаем готовую для импорта в БД книгу со всеми полями
 

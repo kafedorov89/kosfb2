@@ -76,6 +76,7 @@ class FileUploader:
         #Запускаем модуль FileFinder и находим все fb2 файлы внутри архива
         ff = FileFinder(mainfolder)
         if(ff.find(heapfolder, 0)):
+
             #Если поиск отработал успешно Запускаем модуль FileParser по списку найденных fb2 фалов
             fp = FileParser(fb2prepfolder, self.destfolder)
 
@@ -87,6 +88,10 @@ class FileUploader:
                     print "Добавление файла и метаданных произошло успешно"
                 else:
                     print "Ошибка. Файл и метаданные не добавлены"
+
+            print "Всего было найдено % fb2 файла" % ff.filecount
+            print "Всего разобрано % книг" % (fp.callcount)
+            print "Из них ошибочных %" % (fp.errorcount)
         else:
             # FIXME Надо бы добавить класс ошибок и raise вместо print
             print "Ошибка. Модуль FileFinder некорректно завершил работу."

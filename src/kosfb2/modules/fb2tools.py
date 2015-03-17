@@ -8,6 +8,12 @@ import rarfile
 import zipfile
 import shutil
 
+def maskquotes(string):
+    if isinstance(string, str):
+        return string.replace("\'", "\\'").replace('\"', '\\"')
+    else:
+        return string
+
 def create_tmp_folder(rootpath, foldername):
     folderpath = os.path.join(rootpath, foldername)
     #Если временный каталог для текущего разбора еще не был создан, создаем его
@@ -125,7 +131,7 @@ def clearfilename(path):
 
 def decodestr(str):
     try:
-        result = str.encode('utf-8')
+        return str.encode('utf-8', 'ignore')
     except:
         try:
             enc_detect = chardet.detect(str)
@@ -142,4 +148,4 @@ def decodestr(str):
             #result = str.decode('windows-1251', 'fb2_replacer')
             result = str
             print "CLEAR STR"
-    return result
+        return str

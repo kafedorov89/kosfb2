@@ -9,6 +9,7 @@ import fb2tools
 
 class FileFinder(object):
     def __init__(self, *args, **kwargs):
+        self.filecount = 0
         self.mainfolder = args[0]
         self.heapfolder = os.path.join(self.mainfolder, 'heap')
         self.fb2folder = os.path.join(self.mainfolder, 'fb2')
@@ -36,6 +37,7 @@ class FileFinder(object):
         for filename in fb2files:
             with open(os.path.join(findpath, filename) , 'r') as file:
                 fb2tools.filesaver(self.fb2folder, file, ".fb2")
+                self.filecount = self.filecount + 1
             #shutil.copy(os.path.join(findpath, file), self.fb2folder)
 
 
@@ -62,7 +64,8 @@ class FileFinder(object):
             try:
                 self.find(archdir, level + 1)
             except:
-                print "Error. find function on {0} level, arch directory: {1}".format(level + 1, archdir)
+                pass
+            print "Error. find function on {0} level, arch directory: {1}".format(level + 1, archdir)
 
             #Обработка всех найденных каталогов
             #Пока не реализована, потому как из архива распаковываются только файлы, и грузить из формы можно только файлы

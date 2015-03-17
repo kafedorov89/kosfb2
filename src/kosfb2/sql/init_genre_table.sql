@@ -121,5 +121,6 @@ INSERT INTO genre (code, name) VALUES
                 ('home', 'ДомиСемья:Прочее'),
                 ('russian_contemporary', 'Российское современное'),
                 ('foreign_contemporary', 'Зарубежное современное'),
-                ('foreign_publicism', 'Современный публицизм')
-                ;
+                ('foreign_publicism', 'Современный публицизм'),
+                ('proce','Проза');
+                

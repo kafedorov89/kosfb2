@@ -190,6 +190,7 @@ class BookShelf(Base):
     def init_fb2_data (self):
         #dbm = DBManager()
         dbm.init_db()
+        dbm.init_genre()
 
     #Инициализация таблицы жанров
     @cherrypy.expose
