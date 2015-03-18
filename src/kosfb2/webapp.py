@@ -84,9 +84,9 @@ class BookShelf(Base):
 
         fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
                           staticfolder = os.path.join('kosfb2', '__static__'),
-                          destfoldername = 'books')
+                          destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
-        fu.re_upload(tmpfolder)
+        fu.upload(reupload = True, tmpfolder = tmpfolder)
 
     #Добавление новых книг в библиотеку
     @cherrypy.expose
@@ -99,7 +99,7 @@ class BookShelf(Base):
 
         fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
                           staticfolder = os.path.join('kosfb2', '__static__'),
-                          destfoldername = 'books')
+                          destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
 #        fu = FileUploader.FileUploader(foldername = os.path.join('kosfb2', 'uploadedbook'),
 #                                    destfolder = os.path.join('kosfb2', '__static__', 'books'))

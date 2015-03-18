@@ -42,7 +42,7 @@ class DBManager:
     def task_in_queue(self, query):
         try_count = 0
         max_try_count = 100
-        wait_time = 0.5
+        wait_time = 0.001
 
         taskuid = str(uuid.uuid1())
         task = self.create_task(query, taskuid)
@@ -194,23 +194,28 @@ class DBManager:
                  Просто записываем значения в таблицу book
                  
             '''
-            book_uid = tq(insertrow(table = 'book',
-                                    fields = ['fb2id',
-                                              'iscorrect',
-                                              'version',
-                                              'encoding',
-                                              'title',
-                                              'coverfile',
-                                              'coverexist',
-                                              'zipfile'],
-                                    values = [Book["ID"],
-                                              False,
-                                              Book["Version"],
-                                              Book["Encoding"],
-                                              Book["Title"],
-                                              Book["CoverFile"],
-                                              Book["CoverExist"],
-                                              Book["ZipFile"]]))[0][0]
+            try:
+                book_uid = tq(insertrow(table = 'book',
+                                        fields = ['fb2id',
+                                                  'iscorrect',
+                                                  'version',
+                                                  'encoding',
+                                                  'title',
+                                                  'coverfile',
+                                                  'coverexist',
+                                                  'zipfile'],
+                                        values = [Book["ID"],
+                                                  False,
+                                                  Book["Version"],
+                                                  Book["Encoding"],
+                                                  Book["Title"],
+                                                  Book["CoverFile"],
+                                                  Book["CoverExist"],
+                                                  Book["ZipFile"]]))[0][0]
+            except:
+                print "Ошибка. Не удалось добавить новую запись в таблицу book"
+                return False
+
 
             #Пробуем получить описание книги
             try:
@@ -221,7 +226,7 @@ class DBManager:
                          keyfield = 'uid',
                          keyword = book_uid)
             except:
-                print "Ну далось получить описание книги"
+                print "Ошибка. Не удалось получить описание книги"
 
             '''
                  
@@ -235,16 +240,21 @@ class DBManager:
                 Записываем в таблицу book
             '''
 
-            lang_uid = tq(findrows(keyword = Book['Lang'],
-                                   showfields = ['uid'],
-                                   keyfield = 'langcode',
-                                   table = 'language'))
+            try:
+                lang = Book['Lang']
 
-            tq(updaterow(table = 'book',
-                         updatefields = ['langid'],
-                         values = [lang_uid[0][0]],
-                         keyfield = 'uid',
-                         keyword = book_uid))
+                lang_uid = tq(findrows(keyword = lang,
+                                       showfields = ['uid'],
+                                       keyfield = 'langcode',
+                                       table = 'language'))
+
+                tq(updaterow(table = 'book',
+                             updatefields = ['langid'],
+                             values = [lang_uid[0][0]],
+                             keyfield = 'uid',
+                             keyword = book_uid))
+            except:
+                print "Ошибка. Не удалось получить язык книги"
             '''
             #------------------------------------------
             
@@ -279,7 +289,7 @@ class DBManager:
                                                 sequence_uid[0][0],
                                                 sequence['Volume']]))
             except:
-                print "Ну далось получить данные по сериям книги"
+                print "Ошибка. Не удалось получить данные по сериям книги"
             '''
             #------------------------------------------  
             
@@ -313,7 +323,7 @@ class DBManager:
                              keyfield = 'uid',
                              keyword = book_uid))
             except:
-                print "Ну далось получить название издателя книги"
+                print "Ошибка. Не удалось получить название издателя книги"
 
 
 
@@ -353,7 +363,7 @@ class DBManager:
                                           pubsequence_uid[0][0],
                                           pubsequence['Volume']]))
             except:
-                print "Ну далось получить данные по издательским сериям книги"
+                print "Ошибка. Не удалось получить данные по издательским сериям книги"
             '''
 
             #------------------------------------------
@@ -363,23 +373,29 @@ class DBManager:
                 Добавляем записи для каждого uid в таблицу bookgenre
             '''
 
-            print "Genres = ", Book['Genres']
-            for genre in Book['Genres']:
-                try:
-                    genre_uid = tq(findrows(keyword = genre,
-                                            showfields = ['uid'],
-                                            keyfield = 'code',
-                                            table = 'genre'))[0][0]
-                except:
-                    print "В книге указан не известный жанр: ", genre
+            try:
+                genres = Book['Genres']
+                print "Genres = ", genres
+                for genre in genres:
+                    try:
+                        genre_uid = tq(findrows(keyword = genre,
+                                                showfields = ['uid'],
+                                                keyfield = 'code',
+                                                table = 'genre'))[0][0]
+                    except:
+                        print "В книге указан не известный жанр: ", genre
+                        genre_uid = tq(insertrow(table = 'genre',
+                                                 fields = ['code', 'name'],
+                                                 values = [genre, 'Не известный жанр']))[0][0]
+                    finally:
+                        tq(insertrow(table = 'bookgenre',
+                                     fields = ['bookid',
+                                               'genreid'],
+                                     values = [book_uid,
+                                               genre_uid]))
+            except:
+                print "Ошибка. Не удалось получить данные по жанрам книги"
 
-                #print "genre_uid = ", genre_uid
-
-                tq(insertrow(table = 'bookgenre',
-                             fields = ['bookid',
-                                       'genreid'],
-                             values = [book_uid,
-                                       genre_uid]))
             '''
             #------------------------------------------
             
@@ -397,34 +413,47 @@ class DBManager:
                 
             '''
 
-            for author in Book['Authors']:
-                try:
-                    middle = author['MiddleName']
-                except:
-                    middle = ''
-                try:
-                    nick = author['NickName']
-                except:
-                    nick = ''
+            try:
+                authors = Book['Authors']
+                for author in authors:
+                    try:
+                        last = author['LastName']
+                    except:
+                        last = ''
+                    try:
+                        first = author['FirstName']
+                    except:
+                        first = ''
+                    try:
+                        middle = author['MiddleName']
+                    except:
+                        middle = ''
+                    try:
+                        nick = author['NickName']
+                    except:
+                        nick = ''
 
-                author_uid = tq(self.create_query_find_authors(lastname = author['LastName'], firstname = author['FirstName'], middlename = middle, nickname = nick))
+                    author_uid = tq(self.create_query_find_authors(lastname = last, firstname = first, middlename = middle, nickname = nick))
 
-                if len(author_uid) <= 0:
-                    author_uid = tq(insertrow(table = 'author',
-                                              fields = ['lastname',
-                                                        'firstname',
-                                                        'middlename',
-                                                        'nickname'],
-                                              values = [author['LastName'],
-                                                        author['FirstName'],
-                                                        middle,
-                                                        nick]))
+                    if len(author_uid) <= 0:
+                        author_uid = tq(insertrow(table = 'author',
+                                                  fields = ['lastname',
+                                                            'firstname',
+                                                            'middlename',
+                                                            'nickname'],
+                                                  values = [last,
+                                                            first,
+                                                            middle,
+                                                            nick]))
 
-                tq(insertrow(table = 'bookauthor',
-                             fields = ['bookid',
-                                       'authorid'],
-                             values = [book_uid,
-                                       author_uid[0][0]]))
+                    tq(insertrow(table = 'bookauthor',
+                                 fields = ['bookid',
+                                           'authorid'],
+                                 values = [book_uid,
+                                           author_uid[0][0]]))
+            except:
+                print "Ошибка. Авторы книги не найдены"
+
 
             tq(updaterow(table = 'book',
                          updatefields = ['iscorrect'],
@@ -563,6 +592,7 @@ class DBManager:
 
     def sqlv(self, valuearray):
         str_values = ["{0}".format(mq(str(val))) for val in valuearray]
+        #str_values = [str(val) for val in valuearray]
         print "str_values = ", str_values
         return "{0}{1}{2}".format("'", "', '".join(str_values), "'")   #Конвертируем все значения в строки
 

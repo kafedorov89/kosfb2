@@ -53,13 +53,19 @@ docs/_build/
 # PyBuilder
 target/
 
+*.jpg
+*.zip
+*.rar
+*.png
+*.fb2
+
 info/
 src/kosfb2/uploadedbook/
 src/kosfb2/preparedbook/
 .project
 .pydevproject
 .settings/
-#src/kosfb2/__static__/books
+src/kosfb2/__static__/books
 .DS_Store
 .directory
 .dropbox

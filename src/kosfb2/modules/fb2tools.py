@@ -10,7 +10,7 @@ import shutil
 
 def maskquotes(string):
     if isinstance(string, str):
-        return string.replace("\'", "\\'").replace('\"', '\\"')
+        return string.replace("\'", "\'\'")#.replace('"', '\\"')
     else:
         return string
     #return string
@@ -124,7 +124,12 @@ def safeextract(*args, **kwargs):
                 '''
         #logfile.write("errorcount = {0}\n".format(errorcount))
 
+def safeget(value):
+    try:
+        result = value
 
+    except:
+        return False
 
 def clearfilename(path):
     head, tail = ntpath.split(path)
