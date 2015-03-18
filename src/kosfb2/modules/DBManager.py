@@ -698,11 +698,11 @@ class DBManager:
 
         with open(sqlsource, 'r') as fquery:
             myquery = fquery.read()
-            #print "query_str = ", myquery
+            print "query_str = ", myquery
 
         mycursor = db.cursor()
         myquery = myquery
-        mycursor.execute(adapt(myquery))
+        mycursor.execute(myquery)
 
         print u"Таблицы созданы"
 
@@ -718,7 +718,7 @@ class DBManager:
 
         with open(sqlsource, 'r') as fquery:
             myquery = fquery.read()
-            #print "query_str = ", myquery
+            print "query_str = ", myquery
 
         mycursor = db.cursor()
         myquery = myquery

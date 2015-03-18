@@ -239,16 +239,16 @@ class FileParser:
         for author in description.findall(ns + "author"):
             Author = {}
             author_first_name = author.find(ns + "first-name")
-            if author_first_name is not None:
+            if isinstance(author_first_name, str):
                 Author['FirstName'] = ds(author_first_name.text)
             author_last_name = author.find(ns + "last-name")
-            if author_last_name is not None:
+            if isinstance(author_last_name, str):
                 Author['LastName'] = ds(author_last_name.text)
             author_middle_name = author.find(ns + "middle-name")
-            if author_middle_name is not None:
+            if isinstance(author_middle_name, str):
                 Author['MiddleName'] = ds(author_middle_name.text)
             author_nick_name = author.find(ns + "nickname")
-            if author_nick_name is not None:
+            if isinstance(author_nick_name, str):
                 Author['NickName'] = ds(author_nick_name.text)
             Authors.append(Author) #Добавляем еще одного автора в список
             print author_prefix[i], " автор: ",
@@ -350,6 +350,14 @@ class FileParser:
 
 
         return Book #Возвращаем готовую для импорта в БД книгу со всеми полями
+
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
+
+    #Тестовые методы
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
+
 
     def several_book_parser(self, derictory_name):
         #derictory_name - каталог с файлами fb2 (по плану это ../uploadedbooks/fb2_<UUID>)
