@@ -76,7 +76,11 @@ def safeextract(*args, **kwargs):
         archtype = 0
     elif zipfile.is_zipfile(source_filename) or settype == 'zip':
         print "ZIP archive was found"
-        arch = zipfile.ZipFile(source_filename, 'r')
+        try:
+            arch = zipfile.ZipFile(source_filename, 'r')
+        except zipfile.BadZipfile:
+            print "Ошибка. ZIP архив поврежден"
+            return False
         archtype = 1
     else:
         #Тип архива не распознан

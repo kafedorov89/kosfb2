@@ -109,12 +109,12 @@ class FileUploader:
 
             #Запускаем модуль FileFinder и находим все fb2 файлы внутри архива
             ff = FileFinder(mainfolder)
-            try:
-                ff.find(heapfolder, 0)
-                parse = True
-            except:
-                parse = False
-                print "Ошибка. Поиск файлов fb2 не завершен правильно"
+            #try:
+            ff.find(heapfolder, 0)
+            parse = True
+            #except:
+            #    parse = False
+            #    print "Ошибка. Поиск файлов fb2 не завершен правильно"
 
             print "Всего было найдено %s fb2 файлов" % (ff.filecount,)
 

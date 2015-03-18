@@ -11,6 +11,7 @@ import os
 import uuid
 from fb2tools import decodestr as ds
 import functools
+import re
 
 #import DBManager
 
@@ -48,6 +49,11 @@ class FileParser:
 
         ns = "{http://www.gribuser.ru/xml/fictionbook/2.0}" #Схема по которой будем парсить книгу в формате fb2
         #ns = "{http://www.w3.org/1999/xlink}"
+        #myparser = LX.XMLParser(ns_clean = True, recover = True, encoding = 'utf-8')
+        #schema_root = LX.XML('''\<xsd:schema xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><xsd:element name="a" type="xsd:integer"/></xsd:schema>''')
+
+
+
         myparser = LX.XMLParser(recover = True)
 
         #--------------------------------------------------------------------------------------------------------
@@ -57,6 +63,7 @@ class FileParser:
         #Получаем полный путь к файлу книги
         #filepath = os.path.join(self.fb2prepfolder, filename)
         book = LX.parse(filepath, myparser)
+        #book = LX.parse(newfb2file, myparser)
 
         #Определяем КОДИРОВКУ книги
         encoding = "utf-8"
@@ -78,7 +85,7 @@ class FileParser:
         try:
             description = book.getroot().find(ns + "description/")
         except:
-            err
+            err()
             print "Ошибка. В файле fb2 отсутствует раздел description"
 
             return {}
@@ -193,7 +200,7 @@ class FileParser:
                                 print "ID книги: ", Book["ID"]
                             except:
                                 print "Ошибка. ID книги не распознан"
-                                err
+                                err()
                                 return {}
                         #--------------------------------------------------------------------------------------------------------
                         #Узнаем ВЕРСИЮ книги
@@ -204,16 +211,16 @@ class FileParser:
                                 print "Версия книги: ", Book["Version"]
                             except:
                                 print "Ошибка. Версия книги не распознана"
-                                err
+                                err()
                                 return {}
         if not idtag:
             print "Ошибка. Не найден ID книги"
-            err
+            err()
             return {}
 
         if not versiontag:
             print "Ошибка. Не найдена версия книги"
-            err
+            err()
             return {}
 
         #--------------------------------------------------------------------------------------------------------
@@ -224,7 +231,7 @@ class FileParser:
                 print "Название книги: " + Book["Title"]
             except:
                 print "Ошибка. Не найдено название книги"
-                err
+                err()
                 return {}
 
             #print "Название книги: " + description.findall(ns + "book-title")[0].text #Альтернативный вариант доступа к элементу
@@ -258,7 +265,7 @@ class FileParser:
         #--------------------------------------------------------------------------------------------------------
         #Собираем всех АВТОРОВ в список
         i = 0
-        author_prefix = ['Первый', 'Второй', 'Третий', 'Четвертый']
+        author_prefix = ['Первый', 'Второй', 'Третий', 'Четвертый', 'Пятый', 'Шестой', 'Седьмой', 'Восьмой', 'Девятый']
         for author in description.findall(ns + "author"):
             Author = {}
             author_first_name = author.find(ns + "first-name")
@@ -274,7 +281,7 @@ class FileParser:
             if isinstance(author_nick_name, str):
                 Author['NickName'] = ds(author_nick_name.text)
             Authors.append(Author) #Добавляем еще одного автора в список
-            print author_prefix[i], " автор: ",
+            #print author_prefix[i], " автор: ",
             try:
                 print Author['FirstName'],
             except:
@@ -373,7 +380,7 @@ class FileParser:
                 Book["ZipFile"] = os.path.join(self.destfolder, newbookzipfile)
         except:
             print "Архив с файлом fb2 создать не удалось"
-            err
+            err()
             return {}
         #--------------------------------------------------------------------------------------------------------
 

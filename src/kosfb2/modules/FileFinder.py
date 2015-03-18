@@ -30,62 +30,44 @@ class FileFinder(object):
         #try:
         allfiles = [ f for f in filelist if os.path.isfile(os.path.join(findpath, f)) ]
         print "allfiles = ", allfiles
-        #except:
-        #    print "В каталоге нет файлов"
+        if len(allfiles) <= 0:
+            return False
 
-        #Обработка всех найденных фалов fb2
-        #try:
-        fb2files = [ f for f in allfiles if f.endswith(".fb2") ]
-        print "fb2files = ", fb2files
-        #Копируем все найденные fb2 файлы в каталог для дальнейшего парсинга
-        for filename in fb2files:
-            with open(os.path.join(findpath, filename) , 'r') as file:
-                fb2tools.filesaver(self.fb2folder, file, ".fb2")
-                #self.wasfound = True
-                self.filecount = self.filecount + 1
-        #except:
-        #    print "В каталоге не найдены FB2 файлы"
-                    #shutil.copy(os.path.join(findpath, file), self.fb2folder)
+        else:
 
+            fb2files = [ f for f in allfiles if f.endswith(".fb2") ]
+            print "fb2files = ", fb2files
+            #Копируем все найденные fb2 файлы в каталог для дальнейшего парсинга
+            for filename in fb2files:
+                with open(os.path.join(findpath, filename) , 'rb') as file:
+                    fb2tools.filesaver(self.fb2folder, file, ".fb2")
+                    #self.wasfound = True
+                    self.filecount = self.filecount + 1
 
-        #Обработка всех найденных архивов
-        #try:
-        archfiles = [ f for f in allfiles if f.endswith(".zip") or f.endswith(".rar")]
-        print "archfiles = ", archfiles
-        for file in archfiles:
-            archfilepath = os.path.join(findpath, file)
-            archdir = ''
-            #Пробуем создать следующий по счету каталог с именем  "arch<number>"
-            created = False
-            while not created:
-                archdir = os.path.join(self.mainfolder, 'arch/arch{0}'.format(self.archnumb))
-                if(not (os.path.exists(archdir))):
-                    os.mkdir(archdir, 0777)
-                    created = True
-                self.archnumb = self.archnumb + 1
+            archfiles = [ f for f in allfiles if f.endswith(".zip") or f.endswith(".rar")]
+            print "archfiles = ", archfiles
+            for file in archfiles:
+                archfilepath = os.path.join(findpath, file)
+                archdir = ''
 
-            #Распаковываем архив в созданный каталог
-            fb2tools.safeextract(archfilepath, archdir, file[-3:])
-            #unzip(zipfilepath, zipdir)
-            #Archive(archfilepath).extractall(archdir)
+                #Пробуем создать следующий по счету каталог с именем  "arch<number>"
+                created = False
+                while not created:
+                    archdir = os.path.join(self.mainfolder, 'arch/arch{0}'.format(self.archnumb))
+                    print "archdir = ", archdir
+                    if(not (os.path.exists(archdir))):
+                        os.mkdir(archdir, 0777)
+                        created = True
+                    self.archnumb = self.archnumb + 1
 
-            #Запускаем рекурсивный поиск в каталоге, с распакованными файлами из архива
-            #try:
-            self.find(archdir, level + 1)
-            #except:
-            #    print "Stop find function on {0} level, arch directory: {1}".format(level + 1, archdir)
+                #Распаковываем архив в созданный каталог
+                fb2tools.safeextract(archfilepath, archdir, file[-3:])
 
-            #Обработка всех найденных каталогов
-            #Пока не реализована, потому как из архива распаковываются только файлы, и грузить из формы можно только файлы
-            #dirs = [ f for f in filelist if not os.path.isfile(os.path.join(findpath, f)) ]
-            #print "dirs = ", dirs
-        #except:
-        #    print "В каталоге не найдены архивы ZIP и RAR"
+                if not self.find(archdir, level + 1):
+                    print "Дальше копать нельзя"
 
+        return True
 
-        #return False
-        #else:
-        #return True
 
 # __main__ Только для отладки
 '''
