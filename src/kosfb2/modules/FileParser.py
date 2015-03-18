@@ -10,11 +10,12 @@ import zipfile
 import os
 import uuid
 from fb2tools import decodestr as ds
+import functools
+
 #import DBManager
 
 #Тестовая функция для вывода полученных метаданных по книге
 class FileParser:
-
     def __init__(self, *args, **kwargs):
         #Указываем общий рабочий каталог с фалами fb2, которые необходимо разобрать
         self.fb2prepfolder = args[0]
@@ -29,8 +30,14 @@ class FileParser:
     def show_book_info(self, Book):
         print Book
 
+    def errplus1(self, filepath):
+        self.errorcount = self.errorcount + 1
+        shutil.copy(filepath, self.fb2errfolder)
+
     #Парсер для одной итерации. Разбирает передаваемый ему filename и возвращает словарь Book с метаданными
     def one_book_parser(self, filepath):
+        err = functools.partial(self.errplus1, filepath)
+
         self.callcount = self.callcount + 1
         Book = {}
         Annotation = ""
@@ -71,16 +78,18 @@ class FileParser:
         try:
             description = book.getroot().find(ns + "description/")
         except:
-            self.errorcount = self.errorcount + 1
-
+            err
             print "Ошибка. В файле fb2 отсутствует раздел description"
-            shutil.copy(filepath, self.fb2errfolder)
+
             return {}
 
         #Получаем ссылку на корень дерева XML
         bookchilds = book.getroot()
         #--------------------------------------------------------------------------------------------------------
         #Перебираем все теги ВЕРХНЕГО уровня
+
+        idtag = False
+        versiontag = False
 
         for child1 in bookchilds:
             #print "book childs: ", child1.tag
@@ -168,8 +177,6 @@ class FileParser:
 
                     Book["PubSequences"] = PubSequences # Упаковываем все найденные издательские серии в структуру книги
                 #--------------------------------------------------------------------------------------------------------
-                idtag = False
-                versiontag = False
 
                 if (ns + "document-info" == child2.tag):
                     #print "    document-info child: ", child2.tag
@@ -185,8 +192,8 @@ class FileParser:
                                 Book["ID"] = ds(itag.text)
                                 print "ID книги: ", Book["ID"]
                             except:
-                                print "Ошибка. Не найден ID книги"
-                                shutil.copy(filepath, self.fb2errfolder)
+                                print "Ошибка. ID книги не распознан"
+                                err
                                 return {}
                         #--------------------------------------------------------------------------------------------------------
                         #Узнаем ВЕРСИЮ книги
@@ -196,18 +203,18 @@ class FileParser:
                                 Book["Version"] = ds(itag.text)
                                 print "Версия книги: ", Book["Version"]
                             except:
-                                print "Ошибка. Не найдена версия книги"
-                                shutil.copy(filepath, self.fb2errfolder)
+                                print "Ошибка. Версия книги не распознана"
+                                err
                                 return {}
-                if not idtag:
-                    print "Ошибка. Не найден ID книги"
-                    shutil.copy(filepath, self.fb2errfolder)
-                    return {}
+        if not idtag:
+            print "Ошибка. Не найден ID книги"
+            err
+            return {}
 
-                if not versiontag:
-                    print "Ошибка. Не найден ID книги"
-                    shutil.copy(filepath, self.fb2errfolder)
-                    return {}
+        if not versiontag:
+            print "Ошибка. Не найдена версия книги"
+            err
+            return {}
 
         #--------------------------------------------------------------------------------------------------------
         #Получаем НАЗВАНИЕ книги
@@ -217,8 +224,7 @@ class FileParser:
                 print "Название книги: " + Book["Title"]
             except:
                 print "Ошибка. Не найдено название книги"
-
-                shutil.copy(filepath, self.fb2errfolder)
+                err
                 return {}
 
             #print "Название книги: " + description.findall(ns + "book-title")[0].text #Альтернативный вариант доступа к элементу
@@ -343,6 +349,8 @@ class FileParser:
             print "Временный файл архива книги уже существует и будет заменен на более новый"
             os.remove(newbookzipfile) #Удаляем файл с временным
 
+        #Переносим разбираемый файл с книгой в текущий каталог для архивации без вложенных каталогов
+        shutil.copy(filepath, newbookfile)
         #--------------------------------------------------------------------------------------------------------
 
         #Упаковываем файл книги в архив
@@ -365,7 +373,7 @@ class FileParser:
                 Book["ZipFile"] = os.path.join(self.destfolder, newbookzipfile)
         except:
             print "Архив с файлом fb2 создать не удалось"
-            shutil.copy(filepath, self.fb2errfolder)
+            err
             return {}
         #--------------------------------------------------------------------------------------------------------
 

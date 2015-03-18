@@ -36,20 +36,32 @@ class FileUploader:
         #По данному разбору
         #try:
         reupload = False
+        refind = True
 
         try:
-            reupload = kwargs['reupload']
+            upload = kwargs['upload']
+        except:
+            upload = False
             try:
+                find = kwargs['find']
                 tmpfolder = kwargs['tmpfolder']
                 mainfolder = os.path.join(self.uploadfolder, tmpfolder)
+                heapfolder = os.path.join(mainfolder, 'heap')
                 fb2prepfolder = os.path.join(mainfolder, 'fb2prep')
                 fb2errfolder = os.path.join(mainfolder, 'fb2error')
             except:
-                pass
-        except:
-            pass
+                find = False
+                try:
+                    parse = kwargs['parse']
+                    tmpfolder = kwargs['tmpfolder']
+                    mainfolder = os.path.join(self.uploadfolder, tmpfolder)
+                    fb2prepfolder = os.path.join(mainfolder, 'fb2prep')
+                    fb2errfolder = os.path.join(mainfolder, 'fb2error')
+                except:
+                    parse = False
 
-        if not reupload:
+        if upload:
+            print "UPLOAD --------------------------------------------------------------------------"
             tmpfolder = str(uuid.uuid1())
             #Создаем временный каталог для работы с книгами
             mainfolder = os.path.join(self.uploadfolder, tmpfolder)
@@ -89,17 +101,25 @@ class FileUploader:
                 print "Получен 1 файл"
                 file = uploadfiles
                 fb2tools.filesaver(heapfolder, file.file, file.filename)
+            find = True
 
+        if find:
+            print "FIND --------------------------------------------------------------------------"
             #---------------------------------------------------------------------------------------------
 
             #Запускаем модуль FileFinder и находим все fb2 файлы внутри архива
-            wasfound = False
             ff = FileFinder(mainfolder)
-            wasfound = ff.find(heapfolder, 0)
+            try:
+                ff.find(heapfolder, 0)
+                parse = True
+            except:
+                parse = False
+                print "Ошибка. Поиск файлов fb2 не завершен правильно"
 
             print "Всего было найдено %s fb2 файлов" % (ff.filecount,)
 
-        if reupload or wasfound:
+        if parse:
+            print "PARSE --------------------------------------------------------------------------"
             #Если поиск отработал успешно Запускаем модуль FileParser по списку найденных fb2 фалов
             fp = FileParser(fb2prepfolder, self.staticfolder, self.destfolder, fb2errfolder)
 
@@ -120,19 +140,17 @@ class FileUploader:
                     filepath = os.path.join(fb2prepfolder, file)
                     print "filepath = ", filepath
                     shutil.copy(filepath, self.destfolder)
+                print "Разобранные книги перенесены в конечный каталог books"
             except:
                 print "Ошибка. Перенос архивов и обложек в конечный каталог books не произведен"
-            else:
-                print "Разобранные книги перенесены в конечный каталог books"
 
+            print "################################################################################"
+            print "Всего разобрано %s книг" % (fp.callcount,)
+            print "Из них ошибочных %s" % (fp.errorcount,)
 
-                print "################################################################################"
-                print "Всего разобрано %s книг" % (fp.callcount,)
-                print "Из них ошибочных %s" % (fp.errorcount,)
-
-                #Получаем список неразобранных файлов
-                errorbookfiles = os.listdir(fb2errfolder)
-                print errorbookfiles
+            #Получаем список неразобранных файлов
+            errorbookfiles = os.listdir(fb2errfolder)
+            print errorbookfiles
 
                 #Удаляем временный каталог разбора, если все в целом прошло хорошо
 #                if(os.path.exists(mainfolder)):

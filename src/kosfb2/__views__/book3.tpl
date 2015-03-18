@@ -17,11 +17,18 @@
 	  		<input type="submit" name="startupload" value="Загрузить книги">
 		</div>
 	</form>
-	<form action="/reuploadbook" method="post" enctype="multipart/form-data">		
+	<form action="/reparsebook" method="post" enctype="multipart/form-data">		
 		<!-- Кнопка открытия диалога загрузки книг -->
 		<div class="controls">	
 	  		<input type="text" name="tmpfoldername" value=""><br>
-	  		<input type="submit" name="startupload" value="Перезагрузить книги">
+	  		<input type="submit" name="startupload" value="Разобрать книги">
+		</div>
+	</form>
+	<form action="/refindbook" method="post" enctype="multipart/form-data">		
+		<!-- Кнопка открытия диалога загрузки книг -->
+		<div class="controls">	
+	  		<input type="text" name="tmpfoldername" value=""><br>
+	  		<input type="submit" name="startupload" value="Найти fb2 файлы">
 		</div>
 	</form>
 {% endblock %}

@@ -77,7 +77,7 @@ class BookShelf(Base):
 
     #Добавление новых книг в библиотеку после ошибки
     @cherrypy.expose
-    def reuploadbook(self, *args, **kwargs):
+    def refindbook(self, *args, **kwargs):
         cherrypy.response.timeout = 3600
         print "cherrypy.response.timeout = ", cherrypy.response.timeout
         tmpfolder = cherrypy.request.params.get('tmpfoldername') #Можно использовать встроенный в cherrypy метод получения параметров
@@ -86,7 +86,20 @@ class BookShelf(Base):
                           staticfolder = os.path.join('kosfb2', '__static__'),
                           destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
-        fu.upload(reupload = True, tmpfolder = tmpfolder)
+        fu.upload(find = True, tmpfolder = tmpfolder)
+
+    #Добавление новых книг в библиотеку после ошибки
+    @cherrypy.expose
+    def reparsebook(self, *args, **kwargs):
+        cherrypy.response.timeout = 3600
+        print "cherrypy.response.timeout = ", cherrypy.response.timeout
+        tmpfolder = cherrypy.request.params.get('tmpfoldername') #Можно использовать встроенный в cherrypy метод получения параметров
+
+        fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
+                          staticfolder = os.path.join('kosfb2', '__static__'),
+                          destfolder = os.path.join('kosfb2', '__static__', 'books'))
+
+        fu.upload(parse = True, tmpfolder = tmpfolder)
 
     #Добавление новых книг в библиотеку
     @cherrypy.expose
@@ -104,7 +117,7 @@ class BookShelf(Base):
 #        fu = FileUploader.FileUploader(foldername = os.path.join('kosfb2', 'uploadedbook'),
 #                                    destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
-        fu.upload(files = uploadfile)
+        fu.upload(upload = True, files = uploadfile)
 
         '''
         try:
@@ -175,9 +188,9 @@ class BookShelf(Base):
 
         #Делаем запрос к БД и получаем список книг
         try:
-            self.booklist = self.booklistbooks = dbm.find_books(keyword = self.findkeyword.encode('utf-8', 'ignore'),
-                                                                findtype = int(self.findtype),
-                                                                orderby = int(self.grouptype))
+            self.booklist = dbm.find_books(keyword = self.findkeyword.encode('utf-8', 'ignore'),
+                                           findtype = int(self.findtype),
+                                           orderby = int(self.grouptype))
         except:
             self.booklist = []
             print "По данным условиям поиска книги не найдены"

@@ -41,7 +41,7 @@ codecs.register_error("fb2_replacer", replace_error_handler)
 
 #Сохраняет переданный файл - file в нужном месте - savepath под нужным именем - filename
 def filesaver(savepath, file, filename, Rename = True):
-    print "filename = ", filename
+    print "savefilename = ", filename
     if Rename:
         prefix = str(uuid.uuid1())
         postfix = filename.split(".")[-1]
@@ -94,7 +94,7 @@ def safeextract(*args, **kwargs):
             filename = infoitem.filename
             #filename = decodestr(filename) #Так не находит фалй в архиве
 
-            print "arch filename = ", filename
+            print "filename = ", filename
 
             #savename --------------------------------------------------------------------------------
             #Получаем имя файла из пути к файлу внутри архива
@@ -123,13 +123,6 @@ def safeextract(*args, **kwargs):
                     
                 '''
         #logfile.write("errorcount = {0}\n".format(errorcount))
-
-def safeget(value):
-    try:
-        result = value
-
-    except:
-        return False
 
 def clearfilename(path):
     head, tail = ntpath.split(path)
