@@ -13,6 +13,7 @@ def maskquotes(string):
         return string.replace("\'", "\\'").replace('\"', '\\"')
     else:
         return string
+    #return string
 
 def create_tmp_folder(rootpath, foldername):
     folderpath = os.path.join(rootpath, foldername)

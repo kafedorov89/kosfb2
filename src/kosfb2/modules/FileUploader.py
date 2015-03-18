@@ -20,14 +20,41 @@ class ErrorFileUploader(Exception):
 class FileUploader:
     def __init__(self, *args, **kwargs):
         #Указываем общий рабочий каталог для временного хранения временных каталогов для каждого разбора файлов
-        self.foldername = kwargs['foldername']
-        self.destfolder = kwargs['destfolder']
+        self.uploadfolder = kwargs['uploadfolder']
+        self.staticfolder = kwargs['staticfolder']
+        self.destfoldername = os.path.join(self.staticfolder, kwargs['destfoldername'])
 
-        print "foldername = ", self.foldername
+        print "uploadfolder = ", self.uploadfolder
 
         #Если общий каталог еще не был создан, создаем его
-        if(not (os.path.exists(self.foldername))):
-            os.mkdir(self.foldername, 0777)
+        if(not (os.path.exists(self.uploadfolder))):
+            os.mkdir(self.uploadfolder, 0777)
+
+    def re_upload(self, tmpfolder):
+        mainfolder = os.path.join(self.uploadfolder, tmpfolder)
+
+        fb2prepfolder = os.path.join(mainfolder, 'fb2prep')
+        fb2folder = os.path.join(mainfolder, 'fb2')
+
+        fp = FileParser(fb2prepfolder, self.staticfolder, self.destfolder)
+
+        fb2filelist = os.listdir(fb2folder)
+        for filename in fb2filelist:
+            #Запускаем FileParser для одного файла и Добаляем метаданные по разобранному файлу в БД
+            if(dbm.add_book(fp.one_book_parser(os.path.join(fb2folder, filename)))):
+                print "Добавление файла и метаданных произошло успешно"
+            else:
+                print "Ошибка. Файл и метаданные не добавлены"
+
+        #Переносим разобранные и добавленные файлы книг и обложек в общий каталог books
+        prepbookfiles = os.listdir(fb2prepfolder)
+        for file in prepbookfiles:
+            shutil.copy(file, self.destfolder)
+
+
+
+        print "Всего разобрано % книг" % (fp.callcount)
+        print "Из них ошибочных %" % (fp.errorcount)
 
     def upload(self, *args, **kwargs):
 
@@ -36,7 +63,7 @@ class FileUploader:
         #try:
         tmpname = str(uuid.uuid1())
         #Создаем временный каталог для работы с книгами
-        mainfolder = os.path.join(self.foldername, tmpname)
+        mainfolder = os.path.join(self.uploadfolder, tmpname)
         print "mainfolder = ", mainfolder
         #Если временный каталог для текущего разбора еще не был создан, создаем его
         if(not (os.path.exists(mainfolder))):
@@ -76,22 +103,36 @@ class FileUploader:
         #Запускаем модуль FileFinder и находим все fb2 файлы внутри архива
         ff = FileFinder(mainfolder)
         if(ff.find(heapfolder, 0)):
+            print "Всего было найдено % fb2 файла" % ff.filecount
 
             #Если поиск отработал успешно Запускаем модуль FileParser по списку найденных fb2 фалов
-            fp = FileParser(fb2prepfolder, self.destfolder)
+            fp = FileParser(fb2prepfolder, self.staticfolder, self.destfoldername)
 
             fb2folder = os.path.join(mainfolder, 'fb2')
             fb2filelist = os.listdir(fb2folder)
-            for file in fb2filelist:
+            for filename in fb2filelist:
                 #Запускаем FileParser для одного файла и Добаляем метаданные по разобранному файлу в БД
-                if(dbm.add_book(fp.one_book_parser(os.path.join(fb2folder, file)))):
+                if(dbm.add_book(fp.one_book_parser(os.path.join(fb2folder, filename)))):
                     print "Добавление файла и метаданных произошло успешно"
                 else:
                     print "Ошибка. Файл и метаданные не добавлены"
 
-            print "Всего было найдено % fb2 файла" % ff.filecount
-            print "Всего разобрано % книг" % (fp.callcount)
-            print "Из них ошибочных %" % (fp.errorcount)
+            #Переносим разобранные и добавленные файлы книг и обложек в общий каталог books
+            try:
+                prepbookfiles = os.listdir(fb2prepfolder)
+                for file in prepbookfiles:
+                    shutil.copy(file, self.destfolder)
+            except:
+                print "Ошибка. Перенос архивов и обложек в конечный каталог books не произведен"
+            else:
+                print "Разобранные книги перенесены в конечный каталог books"
+
+                print "Всего разобрано % книг" % (fp.callcount)
+                print "Из них ошибочных %" % (fp.errorcount)
+
+                #Удаляем временный каталог разбора, если все в целом прошло хорошо
+                if(os.path.exists(mainfolder)):
+                    shutil.rmtree(mainfolder)
         else:
             # FIXME Надо бы добавить класс ошибок и raise вместо print
             print "Ошибка. Модуль FileFinder некорректно завершил работу."

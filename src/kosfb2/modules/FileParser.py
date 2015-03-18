@@ -17,12 +17,14 @@ class FileParser:
 
     def __init__(self, *args, **kwargs):
         #Указываем общий рабочий каталог с фалами fb2, которые необходимо разобрать
-        self.mainfolder = args[0]
+        self.fb2prepfolder = args[0]
         #Указыаем каталог, куда будем складывать разобранные книги в архивах с обложками
-        self.destfolder = args[1]
+        self.staticfolder = args[1]
+        destfoldername = args[2]
+        self.destfolder = os.path.join(self.staticfolder, destfoldername)
         self.callcount = 0
         self.errorcount = 0
-        #print "foldername = ", self.mainfolder
+        #print "foldername = ", self.fb2prepfolder
 
     def show_book_info(self, Book):
         print Book
@@ -45,7 +47,7 @@ class FileParser:
         print "filepath = ", filepath
 
         #Получаем полный путь к файлу книги
-        #filepath = os.path.join(self.mainfolder, filename)
+        #filepath = os.path.join(self.fb2prepfolder, filename)
         book = LX.parse(filepath, myparser)
 
         #Определяем КОДИРОВКУ книги
@@ -280,27 +282,33 @@ class FileParser:
 
             if (conttype == 'image/jpeg'):
                 print "Найдено изображение типа: jpeg"
-                #coverfile = "../tmpbook/" + Book['ID'] + "_cover.jpg"
-                coverfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".jpg"))
+
+                Book["CoverFile"] = "{0}{1}".format(Book['ID'], ".jpg")
+                coverfile = os.path.join(self.fb2prepfolder, Book["CoverFile"])
+
                 coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в jpg
+
+
             elif (conttype == 'image/png'):
-                #coverfile = "../tmpbook/" + Book['ID'] + "_cover.png"
-                coverfile = os.path.join(self.destfolder, "{0}{1}".format(Book['ID'], ".png"))
-                coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в png
                 print "Найдено изображение типа: png"
 
+                Book["CoverFile"] = "{0}{1}".format(Book['ID'], ".png")
+                coverfile = os.path.join(self.fb2prepfolder, "{0}{1}".format(Book['ID'], ".png"))
+
+                coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в png
+
             coverimg.write(bincover) #Записываем в файл обложки в побитовом режиме
-            coverimg.close() #Закрываем файл обложки для записи
+            coverimg.close() #Закрываем файл обложки
 
             coverexist = True
             #print binary.text #Выводим на экран бинарное представление jpg изображения, вложенного в fb2 файл
         except:
-            coverfile = os.path.join(self.destfolder, "default.jpg")
+            Book["CoverFile"] = os.path.join(self.destfolder, "", "default.jpg")
             print "Обложка не найдена в файле"
             coverexist = False
 
         Book["CoverExist"] = coverexist
-        Book["CoverFile"] = coverfile
+
 
         #Завершаем запись обложки
         #--------------------------------------------------------------------------------------------------------
@@ -323,17 +331,23 @@ class FileParser:
             with zipfile.ZipFile(newbookzipfile, 'w') as myzip:
                 myzip.write(newbookfile)
                 myzip.close()
-                shutil.copy(newbookzipfile, self.destfolder)
-                os.remove(newbookzipfile)
-                os.remove(newbookfile)
+
+                #Переносим упакованный архив с книгой в временный каталог
+                shutil.copy(newbookzipfile, self.fb2prepfolder)
+
+                #Удаляем временный файл fb2
+                if(os.path.exists(newbookfile)):
+                    os.remove(newbookfile)
+                #Удаляем временный файл zip
+                if(os.path.exists(newbookzipfile)):
+                    os.remove(newbookzipfile)
+
                 Book["ZipFile"] = os.path.join(self.destfolder, newbookzipfile)
         except:
             print "Архив с файлом fb2 создать не удалось"
             return {}
         #--------------------------------------------------------------------------------------------------------
-        #Удаляем файл с временной книгой после ее упаковки в архив
-        if(os.path.exists(newbookfile)):
-            os.remove(newbookfile)
+
 
         return Book #Возвращаем готовую для импорта в БД книгу со всеми полями
 

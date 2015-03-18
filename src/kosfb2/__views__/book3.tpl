@@ -17,6 +17,13 @@
 	  		<input type="submit" name="startupload" value="Загрузить книги">
 		</div>
 	</form>
+	<form action="/reuploadbook" method="post" enctype="multipart/form-data">		
+		<!-- Кнопка открытия диалога загрузки книг -->
+		<div class="controls">	
+	  		<input type="text" name="tmpfoldername" value=""><br>
+	  		<input type="submit" name="startupload" value="Перезагрузить книги">
+		</div>
+	</form>
 {% endblock %}
 
 {% block message %}

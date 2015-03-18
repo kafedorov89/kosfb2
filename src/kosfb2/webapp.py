@@ -75,6 +75,19 @@ class BookShelf(Base):
                 'message' : self.message
                 }
 
+    #Добавление новых книг в библиотеку после ошибки
+    @cherrypy.expose
+    def reuploadbook(self, *args, **kwargs):
+        cherrypy.response.timeout = 3600
+        print "cherrypy.response.timeout = ", cherrypy.response.timeout
+        tmpfolder = cherrypy.request.params.get('tmpfoldername') #Можно использовать встроенный в cherrypy метод получения параметров
+
+        fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
+                          staticfolder = os.path.join('kosfb2', '__static__'),
+                          destfoldername = 'books')
+
+        fu.re_upload(tmpfolder)
+
     #Добавление новых книг в библиотеку
     @cherrypy.expose
     def uploadbook(self, *args, **kwargs):
@@ -84,11 +97,12 @@ class BookShelf(Base):
         #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
         #print "test uploadfile = ", uploadfile
 
-        fu = FileUploader(foldername = os.path.join('kosfb2', 'uploadedbook'), destfolder = os.path.join('kosfb2', '__static__', 'books'))
+        fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
+                          staticfolder = os.path.join('kosfb2', '__static__'),
+                          destfoldername = 'books')
 
 #        fu = FileUploader.FileUploader(foldername = os.path.join('kosfb2', 'uploadedbook'),
 #                                    destfolder = os.path.join('kosfb2', '__static__', 'books'))
-
 
         fu.upload(files = uploadfile)
 

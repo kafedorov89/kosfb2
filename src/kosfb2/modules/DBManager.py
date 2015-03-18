@@ -131,7 +131,7 @@ class DBManager:
             return False
 
         #Проверь есть ли книга с таким id в БД
-        if(self.check_value_exist('book', "fb2id", Book["ID"])):
+        if(self.check_value_exist('book', 'fb2id', Book["ID"])):
             exists = True
             print "Запись в БД уже существует"
             #Проверь верcию книги, если книга уже есть в БД
@@ -561,6 +561,11 @@ class DBManager:
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
+    def sqlv(self, valuearray):
+        str_values = ["{0}".format(mq(str(val))) for val in valuearray]
+        print "str_values = ", str_values
+        return "{0}{1}{2}".format("'", "', '".join(str_values), "'")   #Конвертируем все значения в строки
+
     #Генератор SQL-запроса для поиска подстроки keyword в поле field в таблице table c необязательным упорядочиванием по orderfield
     def create_query_find_authors(self, *args, **kwargs):
         lastname = kwargs['lastname']
@@ -568,7 +573,7 @@ class DBManager:
         middlename = kwargs['middlename']
         nickname = kwargs['nickname']
 
-        query_str = adapt("SELECT uid FROM author WHERE lastname LIKE %{0}% AND firstname LIKE %{1}% AND middlename LIKE %{2}% AND nickname LIKE %{3}%".format(lastname, firstname, middlename, nickname))
+        query_str = "SELECT uid FROM author WHERE lastname LIKE '%{0}%' AND firstname LIKE '%{1}%' AND middlename LIKE '%{2}%' AND nickname LIKE '%{3}%'".format(lastname, firstname, middlename, nickname)
         #print query_str
 
         return query_str
@@ -579,18 +584,16 @@ class DBManager:
     #Правильно?
     @usedb
     def check_book_iscorrect(self, db, fb2id):
-        select_query = adapt("SELECT iscorrect from book WHERE fb2id = {0}".format(mq(fb2id)))
+        select_query = "SELECT iscorrect from book WHERE fb2id = '{0}';".format(mq(fb2id))
         select_result = db.select_value(select_query)
-
-        print select_result
-
+        #print select_result
         return bool(select_result)
 
     #Проверяем есть ли значение value поля field в указанной таблице table
     #Существует?
     @usedb
     def check_value_exist(self, db, table, field, value):
-        select_query = adapt("SELECT count(*) from {0} WHERE {1} = {2}".format(table, field, mq(value)))
+        select_query = "SELECT count(*) from {0} WHERE {1} = '{2}';".format(table, field, mq(value))
         print "select_query = ", select_query
         select_result = db.select_value(select_query)
 
@@ -605,7 +608,7 @@ class DBManager:
     #Больше?
     @usedb
     def check_value_bigger(self, db, table, field, value, id_name, id_value):
-        select_query = adapt("SELECT {0} from {1} WHERE {2} = {3}".format(field, table, id_name, mq(id_value)))
+        select_query = "SELECT {0} from {1} WHERE {2} = '{3}';".format(field, table, id_name, mq(id_value))
         print "select_query = ", select_query
         select_result = db.select_value(select_query)
         print "select_result = ", select_result
@@ -630,7 +633,7 @@ class DBManager:
         except:
             orderfield = " "
 
-        query_str = adapt("SELECT {0} FROM {1} WHERE {2} LIKE %{3}% {4}".format(showfields, table, keyfield, keyword, orderfield))
+        query_str = "SELECT {0} FROM {1} WHERE {2} LIKE '%{3}%' {4};".format(showfields, table, keyfield, keyword, orderfield)
         print "query_str = ", query_str
 
         return query_str
@@ -640,15 +643,7 @@ class DBManager:
         table = kwargs['table']                 #Имя таблицы
         field = kwargs['field']    #Поля которым необходимо присвоить значения
 
-        str_values = ["\'{0}\'".format(mq(str(val))) for val in kwargs['values']] #Конвертируем все значения в строки
-
-        #print "str_values = ", str_values
-        values = ', '.join(str_values)    #Значения полей
-
-
-        #print fields
-        #print values
-        query_str = adapt("DELETE FROM {0} WHERE {1} IN ({2}) RETURNING uid;".format(table, field, values))
+        query_str = "DELETE FROM {0} WHERE {1} IN ({2}) RETURNING uid;".format(table, field, self.sqlv(kwargs['values']))
         print "query_str = ", query_str
 
         return query_str
@@ -658,15 +653,14 @@ class DBManager:
         table = kwargs['table']                 #Имя таблицы
         fields = ', '.join(kwargs['fields'])    #Поля которым необходимо присвоить значения
 
-        str_values = ["\'{0}\'".format(mq(str(val))) for val in kwargs['values']] #Конвертируем все значения в строки
-        values = ', '.join(str_values)    #Значения полей
-
-        query_str = adapt("INSERT INTO {0} ({1}) VALUES ({2}) RETURNING uid;".format(table, fields, values))
+        query_str = str("INSERT INTO {0} ({1}) VALUES ({2}) RETURNING uid;".format(table,
+                                                                                   fields,
+                                                                                   self.sqlv(kwargs['values'])))
         print "query_str = ", query_str
 
         return query_str
 
-    #Генератор SQL-запроса для добавления одной строки с полями fields и значениями values  в таблицу table
+    #Генератор SQL-запроса для добавления одной строки с полcreate_query_delete_rowsями fields и значениями values  в таблицу table
     def create_query_update_row(self, *args, **kwargs):
         table = kwargs['table']                 #Имя таблицы
         updatefields = kwargs['updatefields']   #Поля которым необходимо присвоить значения
@@ -677,10 +671,10 @@ class DBManager:
 
         setvalues_array = []
         for f, v in itertools.izip(updatefields, values):
-            setvalues_array.append("{0} = {1}".format(f, mq(v)))
+            setvalues_array.append("{0} = '{1}'".format(f, mq(v)))
         setvalues = ', '.join(setvalues_array)
 
-        query_str = adapt("UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, str(keyword)))
+        query_str = "UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, str(keyword))
 
         '''
         if type(keyword) == int:
