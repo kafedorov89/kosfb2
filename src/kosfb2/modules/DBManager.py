@@ -127,7 +127,7 @@ class DBManager:
             bookid = Book['ID']
             booktitle = Book['Title']
         except:
-            print "Ошибка. Пустые мета-данные"
+            print "Ошибка. Пустые мета-данные. В базу нечего добавлять"
             return False
 
         #Проверь есть ли книга с таким id в БД
