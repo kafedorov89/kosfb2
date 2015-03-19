@@ -496,30 +496,32 @@ class DBManager:
             findtype = kwargs['findtype'] #Тип поиска
 
             if findtype == 0:
-                wherestring = "WHERE B.title like {0}".format(keyword)
+                wherestring = "WHERE B.title like '%{0}%'".format(keyword)
             elif findtype == 1:
-                wherestring = "WHERE A.firstname like {0} OR A.lastname like {0} OR A.middlename like {0} OR A.nickname like keyword {0}".format(keyword)
+                wherestring = "WHERE A.firstname like '%'%{0}%'%' OR A.lastname like '%{0}%' OR A.middlename like '%{0}%' OR A.nickname like keyword '%{0}%'".format(keyword)
             elif findtype == 2:
-                wherestring = "WHERE S.name like {0}".format(keyword)
+                wherestring = "WHERE S.name like '%{0}%'".format(keyword)
             elif findtype == 3:
-                wherestring = "WHERE PS.name like keyword{0}".format(keyword)
+                wherestring = "WHERE PS.name like keyword'%{0}%'".format(keyword)
         except:
             pass
 
         orderbysrting = " "
+        '''
         try:
             orderby = kwargs['orderby'] #Тип сортировки
 
             if orderby == 0:
-                orderbysrting = "ORDER BY G.name"
+                orderbysrting = "ORDER BY MIN(G.name)"
             elif orderby == 1:
-                orderbysrting = "ORDER BY S.name"
+                orderbysrting = "ORDER BY MIN(S.name)"
             elif orderby == 2:
-                orderbysrting = "ORDER BY PS.name"
+                orderbysrting = "ORDER BY MIN(PS.name)"
             elif orderby == 3:
-                orderbysrting = "ORDER BY A.lastname"
+                orderbysrting = "ORDER BY MIN(A.lastname)"
         except:
             pass
+        '''
 
         sqlsource = os.path.join(pool_name, "sql/create_query_find_books.sql")
 

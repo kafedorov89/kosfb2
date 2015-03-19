@@ -346,20 +346,16 @@ class FileParser:
 
                 if (conttype == 'image/jpeg'):
                     print "Найдено изображение типа: jpeg"
-
-                    Book["CoverFile"] = "{0}{1}".format(Book['ID'], ".jpg")
-                    coverfile = os.path.join(self.fb2prepfolder, Book["CoverFile"])
-
-                    coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в jpg
-
+                    coverfilename = "{0}{1}".format(Book['ID'], ".jpg")
 
                 elif (conttype == 'image/png'):
                     print "Найдено изображение типа: png"
+                    coverfilename = "{0}{1}".format(Book['ID'], ".png")
 
-                    Book["CoverFile"] = "{0}{1}".format(Book['ID'], ".png")
-                    coverfile = os.path.join(self.fb2prepfolder, "{0}{1}".format(Book['ID'], ".png"))
+                Book["CoverFile"] = os.path.join("books", coverfilename)
+                coverfile = os.path.join(self.fb2prepfolder, coverfilename)
 
-                    coverimg = open(coverfile, 'wb') #Временно сохраняем обложку в png
+                coverimg = open(coverfile, 'wb') #Временно сохраняем обложку
 
                 coverimg.write(bincover) #Записываем в файл обложки в побитовом режиме
                 coverimg.close() #Закрываем файл обложки
@@ -367,7 +363,7 @@ class FileParser:
                 coverexist = True
                 #print binary.text #Выводим на экран бинарное представление jpg изображения, вложенного в fb2 файл
             except:
-                Book["CoverFile"] = os.path.join(self.destfolder, "", "default.jpg")
+                Book["CoverFile"] = os.path.join("images", "default.jpg")
                 print "Обложка не найдена в файле"
                 coverexist = False
 
@@ -410,7 +406,7 @@ class FileParser:
                     if(os.path.exists(newbookzipfile)):
                         os.remove(newbookzipfile)
 
-                    Book["ZipFile"] = os.path.join(self.destfolder, newbookzipfile)
+                    Book["ZipFile"] = os.path.join("books", newbookzipfile)
             except:
                 print "Архив с файлом fb2 создать не удалось"
                 err()

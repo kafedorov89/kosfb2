@@ -41,7 +41,7 @@ class BookShelf(Base):
         #Инициализируем массив с флагами о выборе "checked" для radio_buttons
         for i in xrange(4):
             self.find_chkd.append("")
-        self.find_chkd[self.findtype] = 'checked'
+        self.find_chkd[int(self.findtype)] = 'checked'
 
     def init_grouptype(self, type = 3):
         self.group_chkd = []
@@ -49,7 +49,7 @@ class BookShelf(Base):
         #Инициализируем массив с флагами о выборе "checked" для radio_buttons
         for i in xrange(4):
             self.group_chkd.append('')
-        self.group_chkd[self.grouptype] = 'checked'
+        self.group_chkd[int(self.grouptype)] = 'checked'
 
     def __init__(self):
         self.start = True
@@ -143,21 +143,21 @@ class BookShelf(Base):
     @cherrypy.expose
     def findbook(self, *args, **kwargs):
         #Пробуем обработать параметры группировки из WEB-формы
-        try:
-            self.grouptype = kwargs["grouptype"]
-            self.init_findgroup(type = self.grouptype)
-        except:
-            print "Error when get group parameters"
-            self.init_grouptype()
+        #try:
+        self.grouptype = kwargs["grouptype"]
+        self.init_grouptype(type = self.grouptype)
+        #except:
+        #    print "Error when get group parameters"
+        #    self.init_grouptype()
 
         #Пробуем обработать параметры поиска из WEB-формы
-        try:
-            self.findtype = kwargs["findtype"]
-            self.findkeyword = kwargs["findkeyword"]
-            self.init_findtype(type = self.findtype, text = self.findkeyword)
-        except:
-            print "Error when get find parameters"
-            self.init_findtype()
+        #try:
+        self.findtype = kwargs["findtype"]
+        self.findkeyword = kwargs["findkeyword"]
+        self.init_findtype(type = self.findtype, text = self.findkeyword)
+        #except:
+        #    print "Error when get find parameters"
+        #    self.init_findtype()
 
         #Делаем запрос к БД и получаем список книг
         try:

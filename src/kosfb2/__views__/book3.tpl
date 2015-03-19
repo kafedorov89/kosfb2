@@ -131,7 +131,7 @@
 				
 				<!-- Кнопка для скачивания книги-->
 				<div id="book-download">
-					<a href= src="{{book['ZipFile']}}">Скачать</a>
+					<a href="{{book['ZipFile']}}">Скачать</a>
 				</div>
 			</div>
 		</div>

@@ -1,15 +1,15 @@
 SELECT 
-	B.coverfile, -- 0 Файл обложки
-    B.uid, -- 1 PRIMARY KEY
+	MIN(B.coverfile), -- 0 Файл обложки
+    MIN(B.uid), -- 1 PRIMARY KEY
 	MIN(B.title), -- 2 Название
 	array_agg(A.lastname), array_agg(A.firstname), array_agg(A.middlename), array_agg(A.nickname), -- 3 4 5 6 Авторы 
-	MIN(G.name), -- 7 Жанры
-	MIN(S.name), MIN(BS.volume), -- 8 9 Серии
+	array_agg(G.name), -- 7 Жанры
+	array_agg(S.name), array_agg(BS.volume), -- 8 9 Серии
 	MIN(P.name), -- 10 Издатель
-	MIN(PS.name), MIN(BPS.volume), -- 11 12 Издательские серии
-    B.zipfile, -- 13 Файл архива книги
-    B.annotation, -- 14 Описание книги
-    B.fb2id -- 15 FB2 идентификатор книги
+	array_agg(PS.name), array_agg(BPS.volume), -- 11 12 Издательские серии
+    MIN(B.zipfile), -- 13 Файл архива книги
+    MIN(B.annotation), -- 14 Описание книги
+    MIN(B.fb2id) -- 15 FB2 идентификатор книги
 
 FROM 
     	book B
@@ -43,9 +43,8 @@ FROM
 
 WHERESTRING
 
-GROUP BY
-	B.uid
-
 ORDERBYSTRING
+
+GROUP BY B.uid
 
 ;
