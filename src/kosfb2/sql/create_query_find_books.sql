@@ -4,9 +4,9 @@ SELECT
 	MIN(B.title), -- Название
 	array_agg(A.lastname), array_agg(A.firstname), array_agg(A.middlename), array_agg(A.nickname), -- Авторы 
 	array_agg(G.name), -- Жанры
-	array_agg(PS.name), array_agg(PS.volume), -- Серии
+	array_agg(S.name), array_agg(BS.volume), -- Серии
 	MIN(P.name), -- Издатель
-	array_agg(PS.name), array_agg(PS.name), -- Издательские серии
+	array_agg(PS.name), array_agg(BPS.volume), -- Издательские серии
     B.zipfile, -- Файл архива книги
     B.annotation, -- Описание книги
     B.fb2id -- FB2 идентификатор книги
@@ -27,7 +27,7 @@ FROM
         ON B.uid = BPS.bookid
     LEFT JOIN 
     	author A
-        ON BA.author = A.uid
+        ON BA.authorid = A.uid
     LEFT JOIN 
     	genre G
         ON BG.genreid = G.uid
@@ -36,7 +36,7 @@ FROM
         ON BS.sequenceid = S.uid
     LEFT JOIN 
     	pubsequence PS
-        ON BPS.pubsequenceid = PS.uid
+        ON BPS.sequenceid = PS.uid
     LEFT JOIN 
     	publisher P
     	ON B.publisherid = P.uid

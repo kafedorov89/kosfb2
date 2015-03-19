@@ -50,6 +50,14 @@
 			<input type="radio" name="findtype" value="2" {{find_chkd[2]}}> названии серии <br>
 			<input type="radio" name="findtype" value="3" {{find_chkd[3]}}> названии издательской серии <br>
 		</div>
+		
+		<div class="controls">
+			Сортировать по:<br>
+			<input type="radio" name="grouptype" value="0" {{group_chkd[0]}}> жанрам <br>
+			<input type="radio" name="grouptype" value="1" {{group_chkd[1]}}> сериям <br>
+			<input type="radio" name="grouptype" value="2" {{group_chkd[2]}}> издательским сериям <br>
+			<input type="radio" name="grouptype" value="3" {{group_chkd[3]}}> авторам <br>
+		</div>
 	
 		<!-- Кнопка запуска поиска книг -->	
 		<div class="controls">
@@ -58,26 +66,9 @@
 	</form>
 {% endblock %}
 
-{% block groupbook %}
-	<form action="/findbook" accept-charset="UTF-8" method="post" id="groupbookform">
-		<div class="controls">
-			Сортировать по:<br>
-			<input type="radio" name="grouptype" value="0" {{group_chkd[0]}}> жанрам <br>
-			<input type="radio" name="grouptype" value="1" {{group_chkd[1]}}> сериям <br>
-			<input type="radio" name="grouptype" value="2" {{group_chkd[2]}}> издательским сериям <br>
-			<input type="radio" name="grouptype" value="3" {{group_chkd[3]}}> авторам <br>
-		</div>
-		
-		<!-- Кнопка запуска  группировки отображения книг -->	
-		<div class="controls">
-			<input type="submit" id="groupsubmit" value="Группировать" class="formsubmit" />
-		</div>
-	</form>
-{% endblock %}
-
 {% block pgctrl %}
 	<div class="row">
-	<form action="/findbook" method="post" id="pgnavform">
+	<form action="/showbook" method="post" id="pgnavform">
 	    <input type="hidden" name="pgnavstep" value="0">
 	    <div class="pgnavbutton">
 	    	<a href="javascript:;" onclick="oFormObject = document.forms['pgnavform']; oFormObject.elements['pgnavstep'].value = '-1'; oFormObject.submit();">
@@ -85,7 +76,7 @@
 	    	</a> 
 	    </div>
 	    <div id="pgnavtext">
-	    	Текущая страница: <input type="text" size="4" name="pagenumb" value={{pagenumb + 1}}><br>
+	    	Текущая страница: <input type="text" size="4" name="pagenumb" value={{pagenumb + 1}} readonly><br>
 	    	Кол-во книг на странице: <input type="text" size="4" name="pagebookcount" value={{pagebookcount}}>
 	    </div>
 	    <div class="pgnavbutton">

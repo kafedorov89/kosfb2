@@ -479,44 +479,78 @@ class DBManager:
     #Поиск книг
     def find_books(self, *args, **kwargs):
         #Если orderfield не передано или пусто то используем сортировку по алфавиту
-        keyword = kwargs['keyword'] #Ключевое слово для поиска
+        try:
+            random = kwargs['random'] #
+            count = kwargs['count']
+        except:
+            random = False
 
-        findtype = kwargs['findtype'] #Тип поиска
-        if findtype == 1:
-            wherestring = "WHERE A.firstname like {0} OR A.lastname like {0} OR A.middlename like {0} OR A.nickname like keyword {0}".format(keyword)
-        elif findtype == 2:
-            wherestring = "WHERE S.name like {0}".format(keyword)
-        elif findtype == 3:
-            wherestring = "WHERE PS.name like keyword{0}".format(keyword)
-        else:
-            wherestring = "WHERE B.title like {0}".format(keyword)
+        wherestring = " "
+        try:
+            keyword = kwargs['keyword'] #Ключевое слово для поиска
+            findtype = kwargs['findtype'] #Тип поиска
 
-        orderby = kwargs['orderby'] #Тип сортировки
-        if orderby == 0:
-            orderbysrting = "ORDER BY G.name"
-        if orderby == 1:
-            orderbysrting = "ORDER BY S.name"
-        if orderby == 2:
-            orderbysrting = "ORDER BY PS.name"
-        if orderby == 3:
-            orderbysrting = "ORDER BY A.lastname"
-        else:
-            orderbysrting = "ORDER BY B.name"
+            if findtype == 0:
+                wherestring = "WHERE B.title like {0}".format(keyword)
+            elif findtype == 1:
+                wherestring = "WHERE A.firstname like {0} OR A.lastname like {0} OR A.middlename like {0} OR A.nickname like keyword {0}".format(keyword)
+            elif findtype == 2:
+                wherestring = "WHERE S.name like {0}".format(keyword)
+            elif findtype == 3:
+                wherestring = "WHERE PS.name like keyword{0}".format(keyword)
+        except:
+            pass
+
+        orderbysrting = " "
+        try:
+            orderby = kwargs['orderby'] #Тип сортировки
+
+            if orderby == 0:
+                orderbysrting = "ORDER BY G.name"
+            elif orderby == 1:
+                orderbysrting = "ORDER BY S.name"
+            elif orderby == 2:
+                orderbysrting = "ORDER BY PS.name"
+            elif orderby == 3:
+                orderbysrting = "ORDER BY A.lastname"
+        except:
+            pass
 
         sqlsource = os.path.join(pool_name, "sql/create_query_find_books.sql")
 
+        query = ""
         with open(sqlsource, 'r') as fquery:
             query = fquery.read()
 
+        print type(query)
+
+        query = query.replace('WHERESTRING', wherestring)
+        query = query.replace('ORDERBYSTRING', orderbysrting)
+
+        print query
+        '''
+        for line in content:
+            line = line.replace("WHERESTRING", wherestring).replace("ORDERBYSTRING", orderbysrting)
+            query = "%s%s" % query, line
+            print line
+        '''
+
         #Дополняем раздел WHERE
-        query.replace("WHERESTRING", wherestring)
+        #query.replace("WHERESTRING", wherestring)
         #Дополняем раздел OREDER BY
-        query.replace("ORDERBYSTRING", orderbysrting)
+        #query.replace("ORDERBYSTRING", orderbysrting)
+
+        #print query
 
         books_array = self.task_in_queue(query)
 
-        books_dict_array = []
+        #Если включен режим случайной выборки, то отбираем n книг из всей выборки
+        if random:
+            if count > len(books_array):
+                count = len(books_array)
+            #books_array = [ books_array[i] for i in sorted(random.sample(xrange(len(books_array)), count)) ]
 
+        books_dict_array = []
 
         if len(books_array) > 0:
             #Разбираем полученный результат в словарь для удобного использования
