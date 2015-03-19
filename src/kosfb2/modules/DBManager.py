@@ -616,7 +616,7 @@ class DBManager:
 
                 book_dict['ZipFile'] = ds(book[13])
                 print "Архив книги: ", book_dict['ZipFile']
-
+                print "--------------------------------------------------------------------------------------"
                 books_dict_array.append(book_dict)
         #print books_dict_array
         return books_dict_array
