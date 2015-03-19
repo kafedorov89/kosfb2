@@ -132,23 +132,35 @@ def clearfilename(path):
     head, tail = ntpath.split(path)
     return tail or ntpath.basename(head)
 
-def decodestr(str):
+def decodeUTF8str(str):
     try:
-        return str.encode('utf-8', 'ignore')
+        result = str.decode('utf-8', 'ignore')
+        #print "decodestr.ENCODED with utf-8"
+        return result
+    except:
+        return str
+
+def encodeUTF8str(str):
+    try:
+        result = str.encode('utf-8', 'ignore')
+        #print "decodestr.ENCODED with utf-8"
+        return result
     except:
         try:
             enc_detect = chardet.detect(str)
-            print enc_detect['confidence']
+            #print enc_detect['confidence']
             enc = enc_detect['encoding']
-            print enc
+            #print enc
 
             try:
                 result = str.decode(enc).encode('utf-8')
+                #print "decodestr.DECODED"
+                return result
             except UnicodeDecodeError, e:
-                print e
-            print "DECODED"
+                #print e
+                pass
+
         except:
             #result = str.decode('windows-1251', 'fb2_replacer')
-            result = str
-            print "CLEAR STR"
-        return str
+            #print "decodestr.CLEAR STR"
+            return str

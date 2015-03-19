@@ -1,15 +1,15 @@
 SELECT 
-	B.coverfile, -- Файл обложки
-    B.uid, -- PRIMARY KEY
-	MIN(B.title), -- Название
-	array_agg(A.lastname), array_agg(A.firstname), array_agg(A.middlename), array_agg(A.nickname), -- Авторы 
-	array_agg(G.name), -- Жанры
-	array_agg(S.name), array_agg(BS.volume), -- Серии
-	MIN(P.name), -- Издатель
-	array_agg(PS.name), array_agg(BPS.volume), -- Издательские серии
-    B.zipfile, -- Файл архива книги
-    B.annotation, -- Описание книги
-    B.fb2id -- FB2 идентификатор книги
+	B.coverfile, -- 0 Файл обложки
+    B.uid, -- 1 PRIMARY KEY
+	MIN(B.title), -- 2 Название
+	array_agg(A.lastname), array_agg(A.firstname), array_agg(A.middlename), array_agg(A.nickname), -- 3 4 5 6 Авторы 
+	MIN(G.name), -- 7 Жанры
+	MIN(S.name), MIN(BS.volume), -- 8 9 Серии
+	MIN(P.name), -- 10 Издатель
+	MIN(PS.name), MIN(BPS.volume), -- 11 12 Издательские серии
+    B.zipfile, -- 13 Файл архива книги
+    B.annotation, -- 14 Описание книги
+    B.fb2id -- 15 FB2 идентификатор книги
 
 FROM 
     	book B

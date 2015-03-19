@@ -9,7 +9,7 @@ import shutil
 import zipfile
 import os
 import uuid
-from fb2tools import decodestr as ds
+from fb2tools import encodeUTF8str as es
 import functools
 import re
 
@@ -152,13 +152,13 @@ class FileParser:
                                 print "Книга относится к серии"
 
                                 try:
-                                    Sequence["Name"] = ds(sequence.attrib["name"])
-                                    print "Серия книги: ", ds(sequence.attrib["name"])
+                                    Sequence["Name"] = es(sequence.attrib["name"])
+                                    print "Серия книги: ", es(sequence.attrib["name"])
                                 except:
                                     print "Ошибка. Название серии не распознано"
 
                                 try:
-                                    Sequence["Volume"] = ds(sequence.attrib["number"])
+                                    Sequence["Volume"] = es(sequence.attrib["number"])
                                     print "Tom: ", Sequence["Volume"], "из серии"
                                 except:
                                     Sequence["Volume"] = 1
@@ -182,12 +182,12 @@ class FileParser:
                                 print "Книга относится к издательской серии"
 
                                 try:
-                                    print "Издательская серия книги: ", ds(publish_sequence.attrib["name"])
-                                    PubSequence["Name"] = ds(publish_sequence.attrib["name"])
+                                    print "Издательская серия книги: ", es(publish_sequence.attrib["name"])
+                                    PubSequence["Name"] = es(publish_sequence.attrib["name"])
                                 except:
                                     print "Ошибка. Название издательской серии не распознано"
                                 try:
-                                    PubSequence["Volume"] = ds(publish_sequence.attrib["number"])
+                                    PubSequence["Volume"] = es(publish_sequence.attrib["number"])
                                     print "Tom: ", PubSequence["Volume"], "из серии"
                                 except:
                                     PubSequence["Volume"] = 1
@@ -203,7 +203,7 @@ class FileParser:
                                 print "В книге указано издательство"
                                 print 'publisher = ', publisher
                                 try:
-                                    Book["Publisher"] = ds(publisher.text)
+                                    Book["Publisher"] = es(publisher.text)
                                     print "Издательство: ", Book["Publisher"]
                                 except:
                                     print "Ошибка. Название издательства не распознано"
@@ -223,7 +223,7 @@ class FileParser:
                             if (ns + "id" == itag.tag):
                                 idtag = True
                                 try:
-                                    Book["ID"] = ds(itag.text)
+                                    Book["ID"] = es(itag.text)
                                     print "ID книги: ", Book["ID"]
                                 except:
                                     print "Ошибка. ID книги не распознан"
@@ -234,7 +234,7 @@ class FileParser:
                             if (ns + "version" == itag.tag):
                                 versiontag = True
                                 try:
-                                    Book["Version"] = ds(itag.text)
+                                    Book["Version"] = es(itag.text)
                                     print "Версия книги: ", Book["Version"]
                                 except:
                                     print "Ошибка. Версия книги не распознана"
@@ -254,7 +254,7 @@ class FileParser:
             #Получаем НАЗВАНИЕ книги
             for title in description.findall(ns + "book-title"):
                 try:
-                    Book["Title"] = ds(title.text) # Пробуем получить название книги, не смотря ни на что
+                    Book["Title"] = es(title.text) # Пробуем получить название книги, не смотря ни на что
                     print "Название книги: " + Book["Title"]
                 except:
                     print "Ошибка. Не найдено название книги"
@@ -267,7 +267,7 @@ class FileParser:
             #Получаем список ЖАНРОВ в которых написана книга
             for genre in description.findall(ns + "genre"):
                 try:
-                    newgenre = ds(genre.text)
+                    newgenre = es(genre.text)
                     Genres.append(newgenre) #Добавляем еще один жанр, к которому относится книга
                     print "Жанр книги: ", newgenre
                 except:
@@ -279,50 +279,56 @@ class FileParser:
             #Получаем АННОТАЦИЮ к книге
             for annotation in description.findall(ns + "annotation"):
                 for child in annotation:
-                    try:
-                        childtext = ds(child.text) #Пробуем получить очередную строку из тега <annotation>
-                    except:
-                        pass
+                    if child is not None:
+                        if isinstance(child.text, str):
+                            try:
+                                childtext = es(child.text) #Пробуем получить очередную строку из тега <annotation>
+                            except:
+                                pass
 
-                    if (child is not None) and isinstance(childtext, str):
-                        Annotation = "{0} {1}".format(Annotation, childtext)
+                            Annotation = "{0} {1}".format(Annotation, childtext)
 
-                    Book["Annotation"] = Annotation
+            Book["Annotation"] = Annotation
             print "Описание книги: ", Annotation
             #--------------------------------------------------------------------------------------------------------
             #Собираем всех АВТОРОВ в список
             i = 0
-            author_prefix = ['Первый', 'Второй', 'Третий', 'Четвертый', 'Пятый', 'Шестой', 'Седьмой', 'Восьмой', 'Девятый']
+            #author_prefix = ['Первый', 'Второй', 'Третий', 'Четвертый', 'Пятый', 'Шестой', 'Седьмой', 'Восьмой', 'Девятый']
+            print "Авторы книги: "
             for author in description.findall(ns + "author"):
                 Author = {}
                 author_first_name = author.find(ns + "first-name")
-                if isinstance(author_first_name, str):
-                    Author['FirstName'] = ds(author_first_name.text)
+                if author_first_name.text is not None:
+                    #if isinstance(author_first_name.text, str):
+                    Author['FirstName'] = es(author_first_name.text)
                 author_last_name = author.find(ns + "last-name")
-                if isinstance(author_last_name, str):
-                    Author['LastName'] = ds(author_last_name.text)
+                if author_last_name is not None:
+                    #if isinstance(author_last_name.text, str):
+                    Author['LastName'] = es(author_last_name.text)
                 author_middle_name = author.find(ns + "middle-name")
-                if isinstance(author_middle_name, str):
-                    Author['MiddleName'] = ds(author_middle_name.text)
+                if author_middle_name is not None:
+                    #if isinstance(author_middle_name.text, str):
+                    Author['MiddleName'] = es(author_middle_name.text)
                 author_nick_name = author.find(ns + "nickname")
-                if isinstance(author_nick_name, str):
-                    Author['NickName'] = ds(author_nick_name.text)
+                if author_nick_name is not None:
+                    #if isinstance(author_nick_name.text, str):
+                    Author['NickName'] = es(author_nick_name.text)
                 Authors.append(Author) #Добавляем еще одного автора в список
                 #print author_prefix[i], " автор: ",
                 try:
-                    print Author['FirstName'],
+                    print es(Author['FirstName']),
                 except:
                     pass
                 try:
-                    print Author['LastName'],
+                    print es(Author['LastName']),
                 except:
                     pass
                 try:
-                    print Author['MiddleName'],
+                    print es(Author['MiddleName']),
                 except:
                     pass
                 try:
-                    print Author['NickName']
+                    print es(Author['NickName'])
                 except:
                     pass
                 i += 1

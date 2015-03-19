@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 #import psycopg2
-import cherrypy
-import cherrybase
+#import cherrypy
+#import cherrybase
 #from cherrybase import *
-from cherrybase import plugins
+#from cherrybase import plugins
 from cherrybase import db #Нужно ли импортировать db чтобы работать с @cherrybase.db.use_db?
 import uuid
 import time
@@ -12,7 +12,12 @@ import functools
 import os
 import itertools
 from fb2tools import maskquotes as mq
-from psycopg2.extensions import adapt
+#from psycopg2.extensions import adapt
+import random
+from fb2tools import encodeUTF8str as es
+from fb2tools import decodeUTF8str as ds
+
+print random.sample([1, 2, 3, 4, 5, 6], 3)
 
 #pool_name = __package__
 #cherrypy.engine.bg_tasks_queue = plugins.TasksQueue (cherrypy.engine)
@@ -41,7 +46,7 @@ class DBManager:
     #Метод добавления задач очереди запросов к БД
     def task_in_queue(self, query):
         try_count = 0
-        max_try_count = 100
+        max_try_count = 10000
         wait_time = 0.001
 
         taskuid = str(uuid.uuid1())
@@ -480,10 +485,10 @@ class DBManager:
     def find_books(self, *args, **kwargs):
         #Если orderfield не передано или пусто то используем сортировку по алфавиту
         try:
-            random = kwargs['random'] #
+            randbook = kwargs['randbook'] #
             count = kwargs['count']
         except:
-            random = False
+            randbook = False
 
         wherestring = " "
         try:
@@ -528,6 +533,7 @@ class DBManager:
         query = query.replace('ORDERBYSTRING', orderbysrting)
 
         print query
+
         '''
         for line in content:
             line = line.replace("WHERESTRING", wherestring).replace("ORDERBYSTRING", orderbysrting)
@@ -545,10 +551,10 @@ class DBManager:
         books_array = self.task_in_queue(query)
 
         #Если включен режим случайной выборки, то отбираем n книг из всей выборки
-        if random:
+        if randbook:
             if count > len(books_array):
                 count = len(books_array)
-            #books_array = [ books_array[i] for i in sorted(random.sample(xrange(len(books_array)), count)) ]
+            books_array = [ books_array[i] for i in sorted(random.sample(xrange(len(books_array)), count)) ]
 
         books_dict_array = []
 
@@ -561,32 +567,53 @@ class DBManager:
                 sequences_string = ""
                 pubsequences_string = ""
 
-                book_dict['CoverFile'] = book[0]
-                book_dict['UID'] = book[1]
-                book_dict['Title'] = book[2]
+                book_dict['CoverFile'] = ds(book[0])
+                print "Обложка книги: ", book_dict['CoverFile']
+                book_dict['UID'] = ds(book[1])
+                print "UID книги: ", book_dict['UID']
+                book_dict['Title'] = ds(book[2])
+                print "Название книги: ", book_dict['Title']
 
-                for i in xrange(len(book[3])):
-                    author_fullname = "{0} {1} {2} {3}; ".format(book[3][i], book[4][i], book[5][i], book[6][i])
-                    authors_string = "{0}{1}".format(authors_string, author_fullname)
-                book_dict['Authors'] = authors_string
+                try:
+                    for i in xrange(len(book[3])):
+                        author_fullname = "%s%s" % (' '.join([ds(book[k][i]) for k in xrange(3, 6)]), "; ")
+                        #author_fullname = "{0} {1} {2} {3}; ".format(ds(book[3][i]), ds(book[4][i]), ds(book[5][i]), ds(book[6][i]))
+                        authors_string = "{0}{1}".format(authors_string, author_fullname)
+                    book_dict['Authors'] = authors_string
+                    print "Авторы: ", book_dict['Authors']
+                except:
+                    pass
 
-                for i in xrange(len(book[7])):
-                    genres_string = "{0}{1}".format(genres_string, format(book[7][i]))
-                book_dict['Genres'] = genres_string
+                try:
+                    for i in xrange(len(book[7])):
+                        genres_string = "{0}{1}".format(genres_string, format(ds(book[7][i])))
+                    book_dict['Genres'] = genres_string
+                    print "Жанры: ", book_dict['Genres']
+                except:
+                    pass
 
-                for i in xrange(len(book[8])):
-                    sequence_fullname = "{0}, Том: {1}; ".format(book[8][i], book[9][i])
-                    sequences_string = "{0}{1}".format(sequences_string, sequence_fullname)
-                book_dict['Sequences'] = sequences_string
+                try:
+                    for i in xrange(len(book[8])):
+                        sequence_fullname = "{0}, Том: {1}; ".format(ds(book[8][i]), ds(book[9][i]))
+                        sequences_string = "{0}{1}".format(sequences_string, sequence_fullname)
+                    book_dict['Sequences'] = sequences_string
+                    print "Серии: ", book_dict['Sequences']
+                except:
+                    pass
 
-                book_dict['Publisher'] = book[9]
+                book_dict['Publisher'] = book[10]
 
-                for i in xrange(len(book[10])):
-                    pubsequence_fullname = "{0}, Том: {1}; ".format(book[10][i], book[11][i])
-                    pubsequences_string = "{0}{1}".format(pubsequences_string, pubsequence_fullname)
-                book_dict['PubSequences'] = pubsequences_string
+                try:
+                    for i in xrange(len(ds(book[11]))):
+                        pubsequence_fullname = "{0}, Том: {1}; ".format(ds(book[11][i]), ds(book[12][i]))
+                        pubsequences_string = "{0}{1}".format(pubsequences_string, pubsequence_fullname)
+                    book_dict['PubSequences'] = pubsequences_string
+                    print "Издательские серии: ", book_dict['PubSequences']
+                except:
+                    pass
 
-                book_dict['ZipFile'] = book[12]
+                book_dict['ZipFile'] = ds(book[13])
+                print "Архив книги: ", book_dict['ZipFile']
 
                 books_dict_array.append(book_dict)
         #print books_dict_array

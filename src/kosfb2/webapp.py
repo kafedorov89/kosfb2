@@ -78,7 +78,7 @@ class BookShelf(Base):
                 'group_chkd': self.group_chkd,
                 'pagenumb' : self.pagenumb,
                 'pagebookcount' : self.pagebookcount,
-                'books' : self.booklist,
+                'books' : self.shortbooklist,
                 'message' : self.message
                 }
 
@@ -99,7 +99,7 @@ class BookShelf(Base):
                 'group_chkd': self.group_chkd,
                 'pagenumb' : self.pagenumb,
                 'pagebookcount' : self.pagebookcount,
-                'books' : self.booklist,
+                'books' : self.shortbooklist,
                 'message' : self.message
                 }
 
@@ -132,11 +132,11 @@ class BookShelf(Base):
     def randbook(self):
         self.start = False
         #Делаем запрос к БД и получаем случайный список книг
-        try:
-            self.fullbooklist = dbm.find_books(random = True, count = self.pagebookcount)
-        except:
-            self.fullbooklist = []
-            print "По данным условиям поиска книги не найдены"
+        #try:
+        self.fullbooklist = dbm.find_books(randbook = True, count = self.pagebookcount)
+        #except:
+        #    self.fullbooklist = []
+        #    print "По данным условиям поиска книги не найдены"
 
         self.showbook()
 
