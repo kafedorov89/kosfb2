@@ -127,8 +127,11 @@ class BookShelf(Base):
             fu.upload(upload = True, files = uploadfile)
 
             #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
+            self.message = u"Книги успешно загружены"
             raise cherrypy.HTTPRedirect("/main")
         except:
+            self.message = "Книги не загружены. Что-то приключилось"
+            raise cherrypy.HTTPRedirect("/main")
             pass
 
     #Скачивание выбранной книги из библиотеки
@@ -278,7 +281,7 @@ class BookShelf(Base):
         #Получаем номер первой книги на отображаемой странице
         start_pos = self.pagenumb * self.pagebookcount
         #Получаем номер последней книги на отображаемой странице
-        end_pos = start_pos + (self.pagebookcount - 1)
+        end_pos = start_pos + self.pagebookcount
 
         print "start_pos = ", start_pos
         print "end_pos = ", end_pos
