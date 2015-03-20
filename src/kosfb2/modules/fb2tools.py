@@ -8,6 +8,16 @@ import rarfile
 import zipfile
 import shutil
 
+def readaddspace(string):
+    if string is not None and isinstance(string, str):
+        text = decodeUTF8str(string)
+        if text != "":
+            return "%s" % (text)
+        else:
+            return ""
+    else:
+        return ""
+
 def maskquotes(string):
     if isinstance(string, str):
         return string.replace("\'", "\'\'")#.replace('"', '\\"')
@@ -47,7 +57,7 @@ def filesaver(savepath, file, filename, Rename = True):
         postfix = filename.split(".")[-1]
         newfilename = "{0}.{1}".format(prefix, postfix)
     else:
-        newfilename = decodestr(filename)
+        newfilename = encodeUTF8str(filename)
 
     print "newfilename = ", newfilename
 

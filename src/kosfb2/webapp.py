@@ -52,15 +52,18 @@ class BookShelf(Base):
         self.group_chkd[int(self.grouptype)] = 'checked'
 
     def __init__(self):
-        self.start = True
+        self.wasindex = False
         self.message = u'Телепузики'
         self.excount = 0
         self.taskcount = 0
         self.init_grouptype()
         self.init_findtype()
 
-        self.booklist = [] #Список книг отображаемый на странице по результатам запроса к БД
         self.fullbooklist = []
+        self.shortbooklist = []
+
+        #self.booklist = [] #Список книг отображаемый на странице по результатам запроса к БД
+
         self.pagenumb = 0 #Номер страницы
         self.pagebookcount = 20 #Кол-во книг отображаемых на странице
 
@@ -70,17 +73,20 @@ class BookShelf(Base):
     @cherrypy.expose
     @cherrypy.tools.jinja (template = 'book3.tpl')
     def main(self):
-        print "self.pagebookcount = ", self.pagebookcount
-        print "message = ", self.message
+        if self.wasindex:
+            print "self.pagebookcount = ", self.pagebookcount
+            print "message = ", self.message
 
-        return {'find_chkd': self.find_chkd,
-                'findkeyword': self.findkeyword,
-                'group_chkd': self.group_chkd,
-                'pagenumb' : self.pagenumb,
-                'pagebookcount' : self.pagebookcount,
-                'books' : self.shortbooklist,
-                'message' : self.message
-                }
+            return {'find_chkd': self.find_chkd,
+                    'findkeyword': self.findkeyword,
+                    'group_chkd': self.group_chkd,
+                    'pagenumb' : self.pagenumb,
+                    'pagebookcount' : self.pagebookcount,
+                    'books' : self.shortbooklist,
+                    'message' : self.message
+                    }
+        else:
+            pass
 
 
 
@@ -88,6 +94,7 @@ class BookShelf(Base):
     @cherrypy.expose
     @cherrypy.tools.jinja (template = 'book3.tpl')
     def index(self):
+        self.wasindex = True
         self.message = u"Первый запуск"
         print "self.pagebookcount = ", self.pagebookcount
         print "message = ", self.message
@@ -108,18 +115,21 @@ class BookShelf(Base):
     def uploadbook(self, *args, **kwargs):
         cherrypy.response.timeout = 3600
         print "cherrypy.response.timeout = ", cherrypy.response.timeout
-        uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
-        #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
-        #print "test uploadfile = ", uploadfile
+        try:
+            uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
+            #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
+            #print "test uploadfile = ", uploadfile
 
-        fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
-                          staticfolder = os.path.join('kosfb2', '__static__'),
-                          destfolder = os.path.join('kosfb2', '__static__', 'books'))
+            fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
+                              staticfolder = os.path.join('kosfb2', '__static__'),
+                              destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
-        fu.upload(upload = True, files = uploadfile)
+            fu.upload(upload = True, files = uploadfile)
 
-        #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
-        raise cherrypy.HTTPRedirect("/main")
+            #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
+            raise cherrypy.HTTPRedirect("/main")
+        except:
+            pass
 
     #Скачивание выбранной книги из библиотеки
     @cherrypy.expose
@@ -130,7 +140,6 @@ class BookShelf(Base):
 
     @cherrypy.expose
     def randbook(self):
-        self.start = False
         #Делаем запрос к БД и получаем случайный список книг
         #try:
         self.fullbooklist = dbm.find_books(randbook = True, count = self.pagebookcount)

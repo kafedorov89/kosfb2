@@ -103,30 +103,53 @@
 				<!-- Текстовая информация о книге -->
 				<div id="book-text-desc">
 					<!-- Название -->
-					Название: {{book['Title']}};<br>
+						Название:
+						{% if book['Title'] is not none%}
+							{{book['Title']}};<br>
+						{% else %}
+							Книга не имеет названия. Это печально<br>
+						{% endif %}
 					
 					<!-- Авторы -->
-					Авторы: {{book['Authors']}};<br>
+						Авторы:
+						{% if book['Authors'] is not none and book['Authors']|length > 0 %}
+							{% for author in book['Authors'] %}
+								{{author}};
+							{% endfor %}<br>
+						{% else %}
+							Книга не имеет авторов. Это печально<br>
+						{% endif %}
 					
 					<!-- Жанры -->
-					Жанры: {{book['Genres']}};<br>
+						Жанры:
+						{% if book['Genres'] is not none and book['Genres']|length > 0 %}
+							{% for genre in book['Genres'] %}
+								{{genre}};
+							{% endfor %}<br>
+						{% else %}
+							Книга не относится ни к одному из жанров<br>
+						{% endif %}
 					
 					<!-- Серии -->
-					Серии: 
-					{% if book['Sequences']|length > 0 %}
-						{{book['Sequences']}};<br>
-					{% else %}
-						Книга не входит ни в одну серию<br>
-					{% endif %}
+						Серии: 
+						{% if book['Sequences'] is not none and book['Sequences']|length > 0 %}
+							{{book['Sequences']}};<br>
+							{% for sequence in book['Sequences'] %}
+								{{sequence}};
+							{% endfor %}<br>
+						{% else %}
+							Книга не входит ни в одну серию<br>
+						{% endif %}
+						
 					<!-- Издательские серии -->
-					Издатель: {{book['Publisher']}}<br>
-					
-					Издательские серии: 
-					{% if book['PubSequences']|length > 0 %}
-						{{book['PubSequences']}};<br>
-					{% else %}
-						Книга не входит ни в одну издательскую серию<br>
-					{% endif %}
+						Издатель: {{book['Publisher']}}<br>
+						
+						Издательские серии: 
+						{% if book['Sequences'] is not none and book['PubSequences']|length > 0 %}
+							{{book['PubSequences']}};<br>
+						{% else %}
+							Книга не входит ни в одну издательскую серию<br>
+						{% endif %}
 				</div>
 				
 				<!-- Кнопка для скачивания книги-->

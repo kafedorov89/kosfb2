@@ -16,6 +16,7 @@ from fb2tools import maskquotes as mq
 import random
 from fb2tools import encodeUTF8str as es
 from fb2tools import decodeUTF8str as ds
+from fb2tools import readaddspace as radd
 
 print random.sample([1, 2, 3, 4, 5, 6], 3)
 
@@ -391,7 +392,7 @@ class DBManager:
                         print "В книге указан не известный жанр: ", genre
                         genre_uid = tq(insertrow(table = 'genre',
                                                  fields = ['code', 'name'],
-                                                 values = [genre, 'Не известный жанр']))[0][0]
+                                                 values = [genre, 'Неизвестный жанр']))[0][0]
                     finally:
                         tq(insertrow(table = 'bookgenre',
                                      fields = ['bookid',
@@ -490,38 +491,43 @@ class DBManager:
         except:
             randbook = False
 
-        wherestring = " "
+        wheretitlestring = " "
+        whereauthorstring = " "
+        wheregenrestring = " "
+        whereseqstring = " "
+        wherepubseqstring = " "
+        wherepubstring = " "
+
         try:
             keyword = kwargs['keyword'] #Ключевое слово для поиска
             findtype = kwargs['findtype'] #Тип поиска
 
             if findtype == 0:
-                wherestring = "WHERE B.title like '%{0}%'".format(keyword)
+                wheretitlestring = "WHERE B.title like '%{0}%'".format(keyword)
             elif findtype == 1:
-                wherestring = "WHERE A.firstname like '%'%{0}%'%' OR A.lastname like '%{0}%' OR A.middlename like '%{0}%' OR A.nickname like keyword '%{0}%'".format(keyword)
+                whereauthorstring = "WHERE A.firstname like '%'%{0}%'%' OR A.lastname like '%{0}%' OR A.middlename like '%{0}%' OR A.nickname like keyword '%{0}%'".format(keyword)
             elif findtype == 2:
-                wherestring = "WHERE S.name like '%{0}%'".format(keyword)
+                whereseqstring = "WHERE S.name like '%{0}%'".format(keyword)
             elif findtype == 3:
-                wherestring = "WHERE PS.name like keyword'%{0}%'".format(keyword)
+                wherepubseqstring = "WHERE PS.name like keyword'%{0}%'".format(keyword)
         except:
             pass
 
         orderbysrting = " "
-        '''
+
         try:
             orderby = kwargs['orderby'] #Тип сортировки
 
             if orderby == 0:
-                orderbysrting = "ORDER BY MIN(G.name)"
+                orderbysrting = "ORDER BY gname"
             elif orderby == 1:
-                orderbysrting = "ORDER BY MIN(S.name)"
+                orderbysrting = "ORDER BY sname"
             elif orderby == 2:
-                orderbysrting = "ORDER BY MIN(PS.name)"
+                orderbysrting = "ORDER BY psname"
             elif orderby == 3:
-                orderbysrting = "ORDER BY MIN(A.lastname)"
+                orderbysrting = "ORDER BY fullauthorname"
         except:
             pass
-        '''
 
         sqlsource = os.path.join(pool_name, "sql/create_query_find_books.sql")
 
@@ -531,7 +537,13 @@ class DBManager:
 
         print type(query)
 
-        query = query.replace('WHERESTRING', wherestring)
+        query = query.replace('WHERETITLESTRING', wheretitlestring)
+        query = query.replace('WHEREAUTHORSTRING', whereauthorstring)
+        query = query.replace('WHEREGENRESTRING', wheregenrestring)
+        query = query.replace('WHERESEQSTRING', whereseqstring)
+        query = query.replace('WHEREPUBSEQSTRING', wherepubseqstring)
+        query = query.replace('WHEREPUBSTRING', wherepubstring)
+
         query = query.replace('ORDERBYSTRING', orderbysrting)
 
         print query
@@ -564,62 +576,107 @@ class DBManager:
             #Разбираем полученный результат в словарь для удобного использования
             for book in books_array:
                 book_dict = {}
-                authors_string = ""
-                genres_string = ""
-                sequences_string = ""
-                pubsequences_string = ""
 
-                book_dict['CoverFile'] = ds(book[0])
+                authors_array = []
+                #authors_string = ""
+
+                genres_array = []
+                #genres_string = ""
+
+                sequences_array = []
+                #sequences_string = ""
+
+                pubsequences_array = []
+                #pubsequences_string = ""
+
+
+                book_dict['CoverFile'] = ds(book['coverfile'])
                 print "Обложка книги: ", book_dict['CoverFile']
-                book_dict['UID'] = ds(book[1])
+                book_dict['UID'] = ds(book['uid'])
                 print "UID книги: ", book_dict['UID']
-                book_dict['Title'] = ds(book[2])
+                book_dict['Title'] = ds(book['title'])
                 print "Название книги: ", book_dict['Title']
 
                 try:
-                    for i in xrange(len(book[3])):
-                        author_fullname = "%s%s" % (' '.join([ds(book[k][i]) for k in xrange(3, 6)]), "; ")
-                        #author_fullname = "{0} {1} {2} {3}; ".format(ds(book[3][i]), ds(book[4][i]), ds(book[5][i]), ds(book[6][i]))
-                        authors_string = "{0}{1}".format(authors_string, author_fullname)
-                    book_dict['Authors'] = authors_string
+                    for i in xrange(len(book['lastname'])):
+
+                        ilastname = radd(book['lastname'][i])
+                        ifirstname = radd(book['firstname'][i])
+                        imiddlename = radd(book['middlename'][i])
+                        inickname = radd(book['nickname'][i])
+
+                        author_fullname = ""
+                        author_fullname = "%s%s%s%s" % (ilastname, ifirstname, imiddlename, inickname)
+                        #author_fullname = book['fullauthorname'][i]
+                        print "author_fullname = ", author_fullname
+                        if author_fullname != "":
+                            author_fullname = author_fullname[:-1]
+                            authors_array.append(author_fullname)
+
+                    book_dict['Authors'] = authors_array
                     print "Авторы: ", book_dict['Authors']
                 except:
                     pass
 
                 try:
-                    for i in xrange(len(book[7])):
-                        genres_string = "{0}{1}".format(genres_string, format(ds(book[7][i])))
-                    book_dict['Genres'] = genres_string
+                    for i in xrange(len(book['genres'])):
+                        if book['genres'][i]:
+                            igenre = ds(book['genres'][i])
+                            if igenre != "":
+                                genres_array.append(igenre)
+                        #genres_array = "%s%s; " % (genres_string, book['genres'][i])
+
+                    book_dict['Genres'] = genres_array
                     print "Жанры: ", book_dict['Genres']
                 except:
                     pass
 
-                try:
-                    for i in xrange(len(book[8])):
-                        sequence_fullname = "{0}, Том: {1}; ".format(ds(book[8][i]), ds(book[9][i]))
-                        sequences_string = "{0}{1}".format(sequences_string, sequence_fullname)
-                    book_dict['Sequences'] = sequences_string
-                    print "Серии: ", book_dict['Sequences']
-                except:
-                    pass
-
-                book_dict['Publisher'] = book[10]
 
                 try:
-                    for i in xrange(len(ds(book[11]))):
-                        pubsequence_fullname = "{0}, Том: {1}; ".format(ds(book[11][i]), ds(book[12][i]))
-                        pubsequences_string = "{0}{1}".format(pubsequences_string, pubsequence_fullname)
-                    book_dict['PubSequences'] = pubsequences_string
-                    print "Издательские серии: ", book_dict['PubSequences']
+                    book_dict['Publisher'] = book['publisher']
                 except:
-                    pass
+                    book_dict['Publisher'] = ""
+                print "Издатель: ", book_dict['Publisher']
 
-                book_dict['ZipFile'] = ds(book[13])
+
+                book_dict['Sequences'] = self.sequence_parser(book['sequences'], book['svolume'])
+                print "Cерии: ", book_dict['Sequences']
+
+
+                book_dict['PubSequences'] = self.sequence_parser(book['pubsequences'], book['psvolume'])
+                print "Издательские серии: ", book_dict['PubSequences']
+
+                try:
+                    book_dict['ZipFile'] = ds(book['zipfile'])
+                except:
+                    book_dict['ZipFile'] = ""
                 print "Архив книги: ", book_dict['ZipFile']
+
                 print "--------------------------------------------------------------------------------------"
                 books_dict_array.append(book_dict)
         #print books_dict_array
         return books_dict_array
+
+    def sequence_parser(self, sequence, volume):
+        sequences_array = []
+        try:
+            for i in xrange(len(sequence)):
+                pubsequence_fullname = ""
+                sequencename = ""
+                volumename = ""
+
+                if sequence[i]:
+                    sequencename = ds(sequence[i])
+                    if volume[i]:
+                        volumename = ds(volume[i])
+
+                        if(sequencename != "" and volumename != ""):
+                            sequence_fullname = "%s, Том: %s" % (sequencename, volumename)
+
+                        sequences_array.append(sequence_fullname)
+            return sequences_array
+        except:
+            return []
 
     #Каскадное удаление записей о книге и файлов
     @usedb

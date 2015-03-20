@@ -1,6 +1,5 @@
 ﻿SELECT 
-
-MIN(BB.uid) as uid, -- 1 PRIMARY KEY
+    MIN(BB.uid) as uid, -- 1 PRIMARY KEY
 	MIN(BB.coverfile) as coverfile, -- 0 Файл обложки
 	MIN(BB.title) as title, -- 2 Название
 	MIN(BB.lastname) as lastname, MIN(BB.firstname) as firstname, MIN(BB.middlename) as middlename, MIN(BB.nickname) as nickname, -- 3 4 5 6 Авторы

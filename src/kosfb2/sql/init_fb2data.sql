@@ -158,3 +158,17 @@ CREATE TABLE publisher (
     uid SERIAL PRIMARY KEY,
     name varchar(200) CONSTRAINT publisher_name_must_be_different UNIQUE NOT NULL
     );
+
+CREATE UNIQUE INDEX bookuid_idx ON book (uid);
+
+CREATE TYPE fullauthorname AS (
+  lastname      text
+ ,firstname     text
+ ,middlename    text
+ ,nickname      text
+ );
+
+CREATE TYPE fullseqname AS (
+  sname      text
+ ,svolume    text
+ );

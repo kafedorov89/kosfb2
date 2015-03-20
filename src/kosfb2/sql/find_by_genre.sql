@@ -14,7 +14,6 @@ FROM
 
 WHERE B.title like '%%'
 
-
 GROUP BY B.uid
 ORDER BY B.uid
 
