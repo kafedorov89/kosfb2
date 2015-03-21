@@ -73,20 +73,20 @@ class BookShelf(Base):
     @cherrypy.expose
     @cherrypy.tools.jinja (template = 'book3.tpl')
     def main(self):
-        if self.wasindex:
-            print "self.pagebookcount = ", self.pagebookcount
-            print "message = ", self.message
+#        if self.wasindex:
+        print "self.pagebookcount = ", self.pagebookcount
+        print "message = ", self.message
 
-            return {'find_chkd': self.find_chkd,
-                    'findkeyword': self.findkeyword,
-                    'group_chkd': self.group_chkd,
-                    'pagenumb' : self.pagenumb,
-                    'pagebookcount' : self.pagebookcount,
-                    'books' : self.shortbooklist,
-                    'message' : self.message
-                    }
-        else:
-            pass
+        return {'find_chkd': self.find_chkd,
+                'findkeyword': self.findkeyword,
+                'group_chkd': self.group_chkd,
+                'pagenumb' : self.pagenumb,
+                'pagebookcount' : self.pagebookcount,
+                'books' : self.shortbooklist,
+                'message' : self.message
+                }
+#        else:
+#            pass
 
 
 
@@ -115,24 +115,27 @@ class BookShelf(Base):
     def uploadbook(self, *args, **kwargs):
         cherrypy.response.timeout = 3600
         print "cherrypy.response.timeout = ", cherrypy.response.timeout
-        try:
-            uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
-            #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
-            #print "test uploadfile = ", uploadfile
+        #try:
+        uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
+        #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
+        #print "test uploadfile = ", uploadfile
 
+        try:
             fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
                               staticfolder = os.path.join('kosfb2', '__static__'),
                               destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
             fu.upload(upload = True, files = uploadfile)
-
-            #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
             self.message = u"Книги успешно загружены"
-            raise cherrypy.HTTPRedirect("/main")
         except:
-            self.message = "Книги не загружены. Что-то приключилось"
-            raise cherrypy.HTTPRedirect("/main")
+            self.message = u"Ошибка. Книги не загружены"
             pass
+        #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
+        raise cherrypy.HTTPRedirect("/main")
+#        except:
+#            self.message = "Книги не загружены. Что-то приключилось"
+#            raise cherrypy.HTTPRedirect("/main")
+#            pass
 
     #Скачивание выбранной книги из библиотеки
     @cherrypy.expose
@@ -155,21 +158,21 @@ class BookShelf(Base):
     @cherrypy.expose
     def findbook(self, *args, **kwargs):
         #Пробуем обработать параметры группировки из WEB-формы
-        #try:
-        self.grouptype = kwargs["grouptype"]
-        self.init_grouptype(type = self.grouptype)
-        #except:
-        #    print "Error when get group parameters"
-        #    self.init_grouptype()
+        try:
+            self.grouptype = kwargs["grouptype"]
+            self.init_grouptype(type = self.grouptype)
+        except:
+            print "Error when get group parameters"
+            self.init_grouptype()
 
         #Пробуем обработать параметры поиска из WEB-формы
-        #try:
-        self.findtype = kwargs["findtype"]
-        self.findkeyword = kwargs["findkeyword"]
-        self.init_findtype(type = self.findtype, text = self.findkeyword)
-        #except:
-        #    print "Error when get find parameters"
-        #    self.init_findtype()
+        try:
+            self.findtype = kwargs["findtype"]
+            self.findkeyword = kwargs["findkeyword"]
+            self.init_findtype(type = self.findtype, text = self.findkeyword)
+        except:
+            print "Error when get find parameters"
+            self.init_findtype()
 
         #Делаем запрос к БД и получаем список книг
         try:
@@ -197,8 +200,12 @@ class BookShelf(Base):
             self.pgnavstep = 0
 
         #Получаем список книг для отображения на текущей странице
-        self.shortbooklist = self.get_page_booklist(self.fullbooklist)
-
+        try:
+            self.shortbooklist = self.get_page_booklist(self.fullbooklist)
+            self.message = u"Книги найдены"
+        except:
+            self.message = u"По данным условиям поиска книги не найдены"
+            self.shortbooklist = []
         #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
         raise cherrypy.HTTPRedirect("/main")
     #----------------------------------------------------------------------------------------------------------------------------------------------------

@@ -144,6 +144,7 @@ class DBManager:
             if(self.check_value_bigger('book', 'version', Book["Version"], 'fb2id', Book["ID"])):
                 print "Добавляемая книга имеет более новую версию"
                 newer_version = True
+                self.delete_book(Book['ID'])
             else:
                 print "Добавляемая книга имеет такую же версию или более раннюю"
                 newer_version = False
@@ -525,7 +526,7 @@ class DBManager:
             elif orderby == 2:
                 orderbysrting = "ORDER BY psname"
             elif orderby == 3:
-                orderbysrting = "ORDER BY fullauthorname"
+                orderbysrting = "ORDER BY lastname"
         except:
             pass
 
@@ -723,7 +724,7 @@ class DBManager:
         middlename = kwargs['middlename']
         nickname = kwargs['nickname']
 
-        query_str = "SELECT uid FROM author WHERE lastname LIKE '%{0}%' AND firstname LIKE '%{1}%' AND middlename LIKE '%{2}%' AND nickname LIKE '%{3}%'".format(lastname, firstname, middlename, nickname)
+        query_str = "SELECT uid FROM author WHERE lastname LIKE '%{0}%' AND firstname LIKE '%{1}%' AND middlename LIKE '%{2}%' AND nickname LIKE '%{3}%'".format(mq(lastname), mq(firstname), mq(middlename), mq(nickname))
         #print query_str
 
         return query_str

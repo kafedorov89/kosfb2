@@ -124,5 +124,5 @@ ORDERBYSTRING
 -- ORDER BY gname
 -- ORDER BY sname
 -- ORDER BY psname
--- ORDER BY fullauthorname
+-- ORDER BY lastname
 ;
