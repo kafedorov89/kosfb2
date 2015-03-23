@@ -506,11 +506,11 @@ class DBManager:
             if findtype == 0:
                 wheretitlestring = "WHERE B.title like '%{0}%'".format(keyword)
             elif findtype == 1:
-                whereauthorstring = "WHERE A.firstname like '%'%{0}%'%' OR A.lastname like '%{0}%' OR A.middlename like '%{0}%' OR A.nickname like keyword '%{0}%'".format(keyword)
+                whereauthorstring = "WHERE A.firstname like '%{0}%' OR A.lastname like '%{0}%' OR A.middlename like '%{0}%' OR A.nickname like '%{0}%'".format(keyword)
             elif findtype == 2:
                 whereseqstring = "WHERE S.name like '%{0}%'".format(keyword)
             elif findtype == 3:
-                wherepubseqstring = "WHERE PS.name like keyword'%{0}%'".format(keyword)
+                wherepubseqstring = "WHERE PS.name like '%{0}%'".format(keyword)
         except:
             pass
 

@@ -52,10 +52,11 @@ class BookShelf(Base):
         self.group_chkd[int(self.grouptype)] = 'checked'
 
     def __init__(self):
+        #self.sid = cherrypy.session
+
         self.wasindex = False
-        self.message = u'Телепузики'
-        self.excount = 0
-        self.taskcount = 0
+        self.message = u'Первый запуск'
+
         self.init_grouptype()
         self.init_findtype()
 
@@ -73,9 +74,11 @@ class BookShelf(Base):
     @cherrypy.expose
     @cherrypy.tools.jinja (template = 'book3.tpl')
     def main(self):
+        sss = cherrypy.session
+
 #        if self.wasindex:
         print "self.pagebookcount = ", self.pagebookcount
-        print "message = ", self.message
+        print "main message = ", sss.get('message')
 
         return {'find_chkd': self.find_chkd,
                 'findkeyword': self.findkeyword,
@@ -88,16 +91,23 @@ class BookShelf(Base):
 #        else:
 #            pass
 
-
-
     #----------------------------------------------------------------------------------------------------------------------------------------------------
     @cherrypy.expose
     @cherrypy.tools.jinja (template = 'book3.tpl')
     def index(self):
-        self.wasindex = True
-        self.message = u"Первый запуск"
-        print "self.pagebookcount = ", self.pagebookcount
-        print "message = ", self.message
+        sss = cherrypy.session
+
+        sss['wasindex'] = True
+        #cherrypy.session.save()
+        #cherrypy.response.cookie['user_name'] = 'TurboGears User' #Пишем cookies. Пример
+
+        sss['find_chkd'] = self.find_chkd
+        sss['findkeyword'] = self.findkeyword
+        sss['group_chkd'] = self.group_chkd
+        sss['pagenumb'] = self.pagenumb
+        sss['pagebookcount'] = self.pagebookcount
+        sss['shortbooklist'] = self.shortbooklist
+        sss['message'] = self.message
 
         self.randbook()
 
@@ -137,15 +147,11 @@ class BookShelf(Base):
 #            raise cherrypy.HTTPRedirect("/main")
 #            pass
 
-    #Скачивание выбранной книги из библиотеки
-    @cherrypy.expose
-    def downloadbook(self):
-        #Упаковываем выбранные книги , books = [] в архив
-        #Передаем архив браузеру для скачивания
-        return "Производится скачивание выбранной книги"
-
     @cherrypy.expose
     def randbook(self):
+        sss = cherrypy.session
+
+
         #Делаем запрос к БД и получаем случайный список книг
         #try:
         self.fullbooklist = dbm.find_books(randbook = True, count = self.pagebookcount)
@@ -308,129 +314,25 @@ class BookShelf(Base):
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
-    def parsebook(self):
-        #bookfile = '/Volumes/MACDATA/Dropbox/workspace/rconline/pylearn/kosfb2/info/books/trash/Likum_Vse_obo_vsem._Tom_2.224988.fb2' # For MacBook
-        #bookfile = '/Volumes/MACDATA/Dropbox/workspace/rconline/pylearn/kosfb2/books/П/Павлов Олег - Вниз по лестнице в небеса.fb2'
-        #bookfile необходимо передавать при вызове парсера
-        #show_book_info(one_book_parser(bookfile)) #Получаем все метаданные по книге в указанном каталоге
-
-        pass
-
+    #Использование сессий
     @cherrypy.expose
-    def testdb_in_FileParser (self):
-        pf = FileParser.FileParser('')
-        pf.testdb()
+    def session_test(self, *args, **kwargs):
+        sss = cherrypy.session
 
-    #query = create_query_insert_row()
-    #task = create_task(query)
-    #put_task_to_queue(task)
+        out = ''
+        for key, value in kwargs.items():
+            out += key + '=' + value + '\n'
+            sss[key] = value
+        print sss
+        return out
 
-    #----------------------------------------------------------------------------------------------------------------------------------------------------
-
-    #Тестовый запрос к DBManager'у. Проверка connection usedb декоратора
-    @cherrypy.expose
-    def testdb (self):
-        dbm = DBManager.DBManager()
-        dbm.testdb()
-
-    #Тестовый запрос к DBManager'у. Проверка идеи с конструктором задач для очереди
-    @cherrypy.expose
-    def test_find_books(self):
-        dbm = DBManager.DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
-        books = dbm.find_books(field = 'title', keyword = u'Тестовая книга для поиска')
-
-        print 'type(books) = ', type(books).__name__
-        print books
-
-        #for book in books:
-        #    print book
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
     #Тестовый метод с JQuery
     @cherrypy.expose
-    def jquery (self):
+    def jquery_test (self):
         #Будет чуть попозже
         pass
 
-    #----------------------------------------------------------------------------------------------------------------------------------------------------
 
-    #Тестовый метод для проверки работоспособности очереди запросов к БД
-    @cherrypy.expose
-    def queue (self):
-        cherrypy.engine.bg_tasks_queue.queue.put (self.tasktest)
-        #cherrypy.engine.bg_tasks_queue.start () #Как стартует очередь без этой команды?
-        return 'Task was executed {} times'.format (self.excount)
-
-    #----------------------------------------------------------------------------------------------------------------------------------------------------
-
-    #Тестовое задание для очереди
-    @cherrypy.expose
-    #@usedb
-    def tasktest (self, db):
-        print db
-        cherrypy.engine.log ('Starting task execution')
-
-        dbcursor = db.cursor() #.select_all('SELECT count(*) FROM author;')
-        dbcursor = db.select_all('SELECT COUNT(*) FROM book;')
-        for row in dbcursor:
-            print(row)
-        time.sleep (3)
-        self.excount += 1
-        cherrypy.engine.log ('Stopped task execution')
-
-    #----------------------------------------------------------------------------------------------------------------------------------------------------
-
-    #Тестовый запрос к DBManager'у. Добавление одной книги
-    @cherrypy.expose
-    def addbook_test (self):
-        cherrypy.engine.log ('Starting task execution')
-
-        dbm = DBManager(pool_name = '__package__')
-
-        myquery = dbm.create_query_insert_row(table = 'book',
-                                              fields = ['title',
-                                                        'encoding',
-                                                        'lang',
-                                                        'bookid',
-                                                        'version',
-                                                        'annotation',
-                                                        'coverfile',
-                                                        'coverexist',
-                                                        'zipfile'],
-                                              values = [u'\'Тестовая книга\'',
-                                                        u'\'utf-8\'',
-                                                        u'\'ru\'',
-                                                        u'\'тестовый ID\'',
-                                                        u'\'1.0\'',
-                                                        u'\'Тестовое описание\'',
-                                                        u'\'путь к файлу обложки\'',
-                                                        u'\'True\'',
-                                                        u'\'Путь к архиву с файлом fb2\''
-                                                        ]
-                                              )
-        print "DBManager.query_insert_row() = ", myquery
-
-        dbm.dbtask(query = myquery)
-        #dbm.init_mydb()
-
-        cherrypy.engine.log ('Stopped task execution')
-        print 'Stopped task execution'
-    #----------------------------------------------------------------------------------------------------------------------------------------------------
-    @cherrypy.expose
-    def post_test(self, *args, **kwargs):
-        try:
-            books = ['Букварь', 'Вторая', 'Синяя']
-        except:
-            pass
-        return {'books': books}
-    #----------------------------------------------------------------------------------------------------------------------------------------------------
-    @cherrypy.expose
-    @cherrypy.tools.jinja (template = 'cycle.tpl')
-    def cycle_test(self):
-        books = ['Букварь', 'Вторая', 'Синяя']
-        return {'books': books}
-    #----------------------------------------------------------------------------------------------------------------------------------------------------
-    @cherrypy.expose
-    def hello(self):
-        return "Hello!"
     #----------------------------------------------------------------------------------------------------------------------------------------------------

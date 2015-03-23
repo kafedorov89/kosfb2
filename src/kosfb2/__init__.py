@@ -39,6 +39,10 @@ def get_applications (mode, basename):
                                     config = config_file,
                                     routes = None
                                     )
+
+    #cherrybase.config.update(static_config)
+    myapp.tree.add ('/', webapp.BookShelf(), None) #Добавляем приложение на хост (Добавляем в корень, но можем и в любую необходимую поддиректорию)
+
     #config = config_file,
 
     #В routes можно добавлять тройные структуры формата (path, handler, cfg)
@@ -46,7 +50,7 @@ def get_applications (mode, basename):
     #handler - путь и имя класса cherrypy который может обрабатывать запросы к сервису
     #cfg - путь к файлу конфигурации cherrypy, который будет присоединен к уже применнным параметрам функцией merge
 
-    #Дополнительный раздел config, указывающий на статические каталоги приложения
+   #Дополняем конфиг приложения описанием статических каталогов
     static_config = {
         '/':
             {'tools.staticdir.on' : True,
@@ -66,18 +70,14 @@ def get_applications (mode, basename):
             {'tools.staticdir.on' : True,
              'tools.staticdir.dir' : 'covers'}
     }
-    #Дополняем конфиг приложения описанием статических каталогов
+
     myapp.app.config.update(static_config)
 
+    #Дополняем конфиг приложения описанием кодировок
     encoding_config = {'tools.encode.on': True,
                        'tools.encode.encoding': 'utf-8',
                        'tools.decode.on': True }
-
-    #Дополняем конфиг приложения описанием кодировок
     myapp.app.config.update(encoding_config)
-
-    #cherrybase.config.update(static_config)
-    myapp.tree.add ('/', webapp.BookShelf(), None) #Добавляем приложение на хост (Добавляем в корень, но можем и в любую необходимую поддиректорию)
 
     #print "myapp.app.config = ", myapp.app.config
 
@@ -86,6 +86,21 @@ def get_applications (mode, basename):
     #__package__ - Называем пул соединений к БД по имени пакета (Может быть соверщенно любое имя)
     #'storage.db_' - Префикс по которому будет производится поиск параметров в конфиг файле
     #'service' - Имя раздела в конфиге которое вишется в квадратных скобках [<имя раздела>] (Если его не написать, то в конфиге ничего не найдется)
+
+    '''
+    session_config = {'tools.sessions.on': True,
+                      'tools.sessions.storage_type' : "memcached"}
+    cherrypy.config.update(session_config)
+    '''
+
+    cherrypy.config.update({'tools.sessions.on': True,
+                        'tools.sessions.storage_type': "File",
+                        'tools.sessions.storage_path': 'sessions',
+                        'tools.sessions.timeout': 10
+               })
+
+
+
     db.auto_config(myapp.app.config, __package__, 'storage.db_', 'service')
 
     return myapp
