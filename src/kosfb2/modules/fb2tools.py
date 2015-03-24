@@ -7,6 +7,7 @@ import chardet
 import rarfile
 import zipfile
 import shutil
+import math
 
 def readaddspace(string):
     if string is not None and isinstance(string, str):
@@ -18,6 +19,7 @@ def readaddspace(string):
     else:
         return ""
 
+#Маскируем кавычки для записи в БД
 def maskquotes(string):
     if isinstance(string, str):
         return string.replace("\'", "\'\'")#.replace('"', '\\"')
@@ -25,7 +27,10 @@ def maskquotes(string):
         return string
     #return string
 
+#Удобное создание временного каталога в нужном месте
 def create_tmp_folder(rootpath, foldername):
+    #rootpath - где расположить каталог
+    #foldername - как назвать каталог
     folderpath = os.path.join(rootpath, foldername)
     #Если временный каталог для текущего разбора еще не был создан, создаем его
     if(not (os.path.exists(folderpath))):
@@ -50,7 +55,14 @@ replace_spc_error_handler = lambda error: (u'_' * (error.end - error.start), err
 codecs.register_error("fb2_replacer", replace_error_handler)
 
 #Сохраняет переданный файл - file в нужном месте - savepath под нужным именем - filename
-def filesaver(savepath, file, filename, Rename = True):
+def filesaver(Rename = True, *args, **kwargs):
+    try:
+        savepath = args[0]
+        file = args[1]
+        filename = args[2]
+    except:
+        print "Ошибка аргументов функции filesaver"
+
     print "savefilename = ", filename
     if Rename:
         prefix = str(uuid.uuid1())
@@ -69,29 +81,40 @@ def filesaver(savepath, file, filename, Rename = True):
         f.write(file.read())
         print f
 
+#Распаковщик архивов RAR и ZIP
 def safeextract(*args, **kwargs):
-    source_filename = args[0]
-    dest_dir = args[1]
-    settype = args[2]
+    source_filename = args[0] #Путь к файлу архива
+    dest_dir = args[1] #Куда распаковывать
+    settype = args[2] #Принудительное задание расширения файла
+
+    archtype = -1 #Инициализация типа архива
+
     #logfile = args[3]
-    errorcount = 0
-    archtype = -1
+    #errorcount = 0 #Количество ошибок при распаковке архива
+
 
     #with open('logfile.txt', "wb") as archlog:
     print "source_filename = ", source_filename
 
-    if rarfile.is_rarfile(source_filename) or settype == 'rar':
-        print "RAR archive was found"
-        arch = rarfile.RarFile(source_filename, 'r')
-        archtype = 0
-    elif zipfile.is_zipfile(source_filename) or settype == 'zip':
-        print "ZIP archive was found"
-        try:
-            arch = zipfile.ZipFile(source_filename, 'r')
-        except zipfile.BadZipfile:
-            print "Ошибка. ZIP архив поврежден"
-            return False
-        archtype = 1
+    if settype == 'rar':
+        if rarfile.is_rarfile(source_filename):
+            print "RAR archive was found"
+            try:
+                arch = rarfile.RarFile(source_filename, 'r')
+                archtype = 0
+            except rarfile.BadRarFile:
+                print "Ошибка. RAR архив поврежден"
+                archtype = -1
+    elif settype == 'zip':
+        if zipfile.is_zipfile(source_filename):
+            print "ZIP archive was found"
+            try:
+                arch = zipfile.ZipFile(source_filename, 'r')
+                archtype = 1
+            except zipfile.BadZipfile:
+                print "Ошибка. ZIP архив поврежден"
+                archtype = -1
+
     else:
         #Тип архива не распознан
         print "Ошибка. Архив не распознан"
@@ -138,9 +161,11 @@ def safeextract(*args, **kwargs):
                 '''
         #logfile.write("errorcount = {0}\n".format(errorcount))
 
+#Получаем имя файла из пути
 def clearfilename(path):
     head, tail = ntpath.split(path)
     return tail or ntpath.basename(head)
+
 
 def decodeUTF8str(str):
     try:
@@ -169,7 +194,6 @@ def encodeUTF8str(str):
             except UnicodeDecodeError, e:
                 #print e
                 pass
-
         except:
             #result = str.decode('windows-1251', 'fb2_replacer')
             #print "decodestr.CLEAR STR"

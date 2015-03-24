@@ -489,7 +489,7 @@ class DBManager:
         try:
             randbook = kwargs['randbook'] #
             count = kwargs['count']
-        except:
+        except KeyError:
             randbook = False
 
         wheretitlestring = " "
@@ -511,7 +511,7 @@ class DBManager:
                 whereseqstring = "WHERE S.name like '%{0}%'".format(keyword)
             elif findtype == 3:
                 wherepubseqstring = "WHERE PS.name like '%{0}%'".format(keyword)
-        except:
+        except KeyError:
             pass
 
         orderbysrting = " "
@@ -527,7 +527,7 @@ class DBManager:
                 orderbysrting = "ORDER BY psname"
             elif orderby == 3:
                 orderbysrting = "ORDER BY lastname"
-        except:
+        except KeyError:
             pass
 
         sqlsource = os.path.join(pool_name, "sql/create_query_find_books.sql")
@@ -573,6 +573,7 @@ class DBManager:
 
         books_dict_array = []
 
+        #Если найдена хотя бы одна книга
         if len(books_array) > 0:
             #Разбираем полученный результат в словарь для удобного использования
             for book in books_array:
@@ -616,7 +617,7 @@ class DBManager:
 
                     book_dict['Authors'] = authors_array
                     print "Авторы: ", book_dict['Authors']
-                except:
+                except KeyError:
                     pass
 
                 try:
@@ -629,13 +630,12 @@ class DBManager:
 
                     book_dict['Genres'] = genres_array
                     print "Жанры: ", book_dict['Genres']
-                except:
+                except KeyError:
                     pass
-
 
                 try:
                     book_dict['Publisher'] = book['publisher']
-                except:
+                except KeyError:
                     book_dict['Publisher'] = ""
                 print "Издатель: ", book_dict['Publisher']
 
@@ -649,7 +649,7 @@ class DBManager:
 
                 try:
                     book_dict['ZipFile'] = ds(book['zipfile'])
-                except:
+                except KeyError:
                     book_dict['ZipFile'] = ""
                 print "Архив книги: ", book_dict['ZipFile']
 
@@ -658,6 +658,7 @@ class DBManager:
         #print books_dict_array
         return books_dict_array
 
+    #Функция для получения полного названия серий с томом книги
     def sequence_parser(self, sequence, volume):
         sequences_array = []
         try:
@@ -726,10 +727,7 @@ class DBManager:
 
         query_str = "SELECT uid FROM author WHERE lastname LIKE '%{0}%' AND firstname LIKE '%{1}%' AND middlename LIKE '%{2}%' AND nickname LIKE '%{3}%'".format(mq(lastname), mq(firstname), mq(middlename), mq(nickname))
         #print query_str
-
         return query_str
-
-
 
     #Проверяем правильно ли была добавлена уже существующая книга
     #Правильно?
@@ -896,3 +894,12 @@ class DBManager:
     @usedb
     def testdb(self, db, *args, **kwargs):
         print db
+
+
+    def testqueue(self):
+        self.taskqueue.put(self.threadtask)
+
+    def threadtask(self):
+        while True:
+            time.sleep(10)
+            print "THREAD 1"

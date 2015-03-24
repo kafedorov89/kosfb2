@@ -4,13 +4,14 @@ import cherrypy
 #import cgi
 #import tempfile
 #import cherrybase
+import uuid
 import jinja2
 import os
 import math
 import time
 #from cherrybase import db
 from kosfb2.modules import FileUploader, DBManager, FileParser
-#import kosfb2.modules
+import kosfb2.modules.fb2tools as fb2tools
 
 print cherrypy.engine.state
 
@@ -19,7 +20,9 @@ print cherrypy.engine.state
 #usedb = db.use_db(pool_name)
 
 #dbm = DBManager.DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
-dbm = DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
+tq = cherrypy.engine.bg_tasks_queue
+dbm = DBManager(taskqueue = tq)
+
 
 class Base(object):
 
@@ -33,40 +36,8 @@ class Base(object):
 
 class BookShelf(Base):
 
-    def init_findtype(self, type = 0, text = ''):
-        self.find_chkd = []
-        self.findtype = type #Тип поиска (где искать ключевое слово?) (Название 0, Автор 1, Серия 2, Издательская серия 3)
-        self.findkeyword = text #Ключевое слово для поиска
-
-        #Инициализируем массив с флагами о выборе "checked" для radio_buttons
-        for i in xrange(4):
-            self.find_chkd.append("")
-        self.find_chkd[int(self.findtype)] = 'checked'
-
-    def init_grouptype(self, type = 3):
-        self.group_chkd = []
-        self.grouptype = type #Тип группировки (где искать ключевое слово?) (Жанр 0, Серия 1, Издательская серия 2, Автор 3)
-        #Инициализируем массив с флагами о выборе "checked" для radio_buttons
-        for i in xrange(4):
-            self.group_chkd.append('')
-        self.group_chkd[int(self.grouptype)] = 'checked'
-
     def __init__(self):
-        #self.sid = cherrypy.session
-
-        self.wasindex = False
-        self.message = u'Первый запуск'
-
-        self.init_grouptype()
-        self.init_findtype()
-
-        self.fullbooklist = []
-        self.shortbooklist = []
-
-        #self.booklist = [] #Список книг отображаемый на странице по результатам запроса к БД
-
-        self.pagenumb = 0 #Номер страницы
-        self.pagebookcount = 20 #Кол-во книг отображаемых на странице
+        self.defbookcount = 20 #Кол-во книг отображаемых на странице
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -74,145 +45,249 @@ class BookShelf(Base):
     @cherrypy.expose
     @cherrypy.tools.jinja (template = 'book3.tpl')
     def main(self):
-        sss = cherrypy.session
+        chs = cherrypy.session
+        mainparams = {'find_chkd': chs.get('find_chkd'),
+                    'findkeyword': chs.get('findkeyword'),
+                    'group_chkd': chs.get('group_chkd'),
+                    'pagenumb' : chs.get('pagenumb'),
+                    'pagebookcount' : chs.get('pagebookcount'),
+                    'books' : chs.get('shortbooklist'),
+                    'message' : chs.get('message')
+                    }
 
-#        if self.wasindex:
-        print "self.pagebookcount = ", sss.get('pagebookcount')
-        print "main message = ", sss.get('message')
+        if chs.get('wasindex'):
 
-        return {'find_chkd': sss.get('find_chkd'),
-                'findkeyword': sss.get('findkeyword'),
-                'group_chkd': sss.get('group_chkd'),
-                'pagenumb' : sss.get('pagenumb'),
-                'pagebookcount' : sss.get('pagebookcount'),
-                'books' : sss.get('shortbooklist'),
-                'message' : sss.get('message')
-                }
-#        else:
-#            pass
+            if chs.get('uploading'):
+                uploadparams = {'uploaderlog': chs.get('uploaderlog'),
+                                'uploading': True}
+                return mainparams.update(uploadparams)
+
+            return mainparams
+        else:
+            raise cherrypy.HTTPRedirect("/index")
+
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
     @cherrypy.expose
     @cherrypy.tools.jinja (template = 'book3.tpl')
     def index(self):
-        sss = cherrypy.session
+        chs = cherrypy.session
 
-        sss['wasindex'] = True
-        #cherrypy.session.save()
+        chs['wasindex'] = True
+        chs['find_chkd'], findtype, chs['findkeyword'] = self.init_findtype()
+        chs['group_chkd'], groupetype = self.init_grouptype()
+        chs['pagenumb'] = 0
+        chs['pagebookcount'] = self.defbookcount
+        chs['fullbooklist'] = self.randbook(self.defbookcount)
+        chs['shortbooklist'] = []
+        chs['message'] = u"Первый запуск"
+
         #cherrypy.response.cookie['user_name'] = 'TurboGears User' #Пишем cookies. Пример
-
-        sss['find_chkd'] = self.find_chkd
-        sss['findkeyword'] = self.findkeyword
-        sss['group_chkd'] = self.group_chkd
-        sss['pagenumb'] = self.pagenumb
-        sss['pagebookcount'] = self.pagebookcount
-        sss['shortbooklist'] = self.shortbooklist
-        sss['message'] = self.message
-
-        self.randbook()
-
         raise cherrypy.HTTPRedirect("/main")
-
-
-    #Добавление новых книг в библиотеку
-    @cherrypy.expose
-    def uploadbook(self, *args, **kwargs):
-        cherrypy.response.timeout = 3600
-        print "cherrypy.response.timeout = ", cherrypy.response.timeout
-        #try:
-        uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
-        #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
-        #print "test uploadfile = ", uploadfile
-
-        try:
-            fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
-                              staticfolder = os.path.join('kosfb2', '__static__'),
-                              destfolder = os.path.join('kosfb2', '__static__', 'books'))
-
-            fu.upload(upload = True, files = uploadfile)
-            self.message = u"Книги успешно загружены"
-        except:
-            self.message = u"Ошибка. Книги не загружены"
-            pass
-        #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
-        raise cherrypy.HTTPRedirect("/main")
-#        except:
-#            self.message = "Книги не загружены. Что-то приключилось"
-#            raise cherrypy.HTTPRedirect("/main")
-#            pass
-
-    @cherrypy.expose
-    def randbook(self):
-        sss = cherrypy.session
-
-
-        #Делаем запрос к БД и получаем случайный список книг
-        #try:
-        self.fullbooklist = dbm.find_books(randbook = True, count = self.pagebookcount)
-        #except:
-        #    self.fullbooklist = []
-        #    print "По данным условиям поиска книги не найдены"
-
-        self.showbook()
 
     @cherrypy.expose
     def findbook(self, *args, **kwargs):
+        chs = cherrypy.session
+
         #Пробуем обработать параметры группировки из WEB-формы
         try:
-            self.grouptype = kwargs["grouptype"]
-            self.init_grouptype(type = self.grouptype)
-        except:
+            chs['grouptype'] = kwargs["grouptype"]
+            #self.init_grouptype(type = self.grouptype)
+        except KeyError:
             print "Error when get group parameters"
             self.init_grouptype()
 
         #Пробуем обработать параметры поиска из WEB-формы
         try:
-            self.findtype = kwargs["findtype"]
-            self.findkeyword = kwargs["findkeyword"]
-            self.init_findtype(type = self.findtype, text = self.findkeyword)
-        except:
+            chs['findtype'] = kwargs["findtype"]
+            chs['findkeyword'] = kwargs["findkeyword"]
+            #self.init_findtype(type = self.findtype, text = self.findkeyword)
+        except KeyError:
             print "Error when get find parameters"
             self.init_findtype()
 
         #Делаем запрос к БД и получаем список книг
         try:
-            self.fullbooklist = dbm.find_books(keyword = self.findkeyword.encode('utf-8', 'ignore'),
-                                               findtype = int(self.findtype),
-                                               orderby = int(self.grouptype))
-        except:
-            self.fullbooklist = []
+            chs['fullbooklist'] = dbm.find_books(keyword = chs.get('findkeyword').encode('utf-8', 'ignore'),
+                                                 findtype = int(chs.get('findtype')),
+                                                 orderby = int(chs.get('grouptype')))
+            chs['message'] = u"Найдено книг: %s" % (len(chs['fullbooklist']))
+            #print chs['fullbooklist']
+        except: #ErrorFindBook
+            chs['fullbooklist'] = []
+            #chs['message'] = "По данным условиям поиска книги не найдены"
             print "По данным условиям поиска книги не найдены"
 
         self.showbook()
 
     @cherrypy.expose
     def showbook(self, *args, **kwargs):
+        chs = cherrypy.session
+
         #Обновляем количество книг отображаемых на странице, если оно было изменено пользователем
         try:
-            self.pagebookcount = int(kwargs["pagebookcount"])
-        except:
-            pass
+            pagebookcount = int(kwargs["pagebookcount"])
+        except KeyError:
+            pagebookcount = self.defbookcount
 
         #Получаем информацию о переходе на другую страницу, если он был произведен пользователем
         try:
-            self.pgnavstep = kwargs["pgnavstep"]
-        except:
-            self.pgnavstep = 0
+            pgnavstep = kwargs["pgnavstep"]
+        except KeyError:
+            pgnavstep = 0
+
+        #Получаем текущий номер страницы
+        try:
+            pagenumb = kwargs["pagenumb"]
+        except KeyError:
+            pagenumb = 0
 
         #Получаем список книг для отображения на текущей странице
-        try:
-            self.shortbooklist = self.get_page_booklist(self.fullbooklist)
-            self.message = u"Книги найдены"
-        except:
-            self.message = u"По данным условиям поиска книги не найдены"
-            self.shortbooklist = []
+#        try:
+        chs['pagenumb'] = 0
+        chs['shortbooklist'] = []
+
+        chs['pagenumb'], chs['shortbooklist'] = self.get_page_booklist(fullbooklist = chs.get('fullbooklist'),
+                                                                           pagebookcount = pagebookcount,
+                                                                           pagenumb = pagenumb,
+                                                                           pgnavstep = pgnavstep)
+#            print chs['shortbooklist']
+#            chs['message'] = u"Книги найдены"
+#        except: #ErrorGetShortBookList
+#            chs['pagenumb'] = 0
+#            chs['shortbooklist'] = []
+#            chs['message'] = u"По данным условиям поиска книги не найдены"
+
         #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
         raise cherrypy.HTTPRedirect("/main")
+
+    #Добавление новых книг в библиотеку
+    @cherrypy.expose
+    def uploadbook(self, *args, **kwargs):
+        chs = cherrypy.session
+        errmessage = u"Книги не загружены. Что-то приключилось"
+
+        cherrypy.response.timeout = 3600
+        print "cherrypy.response.timeout = ", cherrypy.response.timeout
+
+#        try:
+
+        uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
+            #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
+            #print "test uploadfile = ", uploadfile
+
+        fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
+                          staticfolder = os.path.join('kosfb2', '__static__'),
+                          destfolder = os.path.join('kosfb2', '__static__', 'books'))
+
+        uploader = fu.upload
+
+        print uploader
+        #uploader.doupload = True
+
+        uploader.files = uploadfile
+        uploader.uid = uploaderuid = str(uuid.uuid1())
+        tq.put(uploader)
+
+        chs['uploaderlog'] = os.path.join('kosfb2', '__static__', 'books', "%s_upload.log" % (uploaderuid))
+        chs['uploading'] = True
+        raise cherrypy.HTTPRedirect("/main")
+
+#        except AttributeError:
+#            chs['message'] = errmessage
+#            raise cherrypy.HTTPRedirect("/main")
+#        except KeyError:
+#            chs['message'] = errmessage
+#            raise cherrypy.HTTPRedirect("/main")
+
+    #Добавление новых книг в библиотеку
+    @cherrypy.expose
+    def uploadbook1(self, *args, **kwargs):
+        chs = cherrypy.session
+
+        cherrypy.response.timeout = 3600
+        print "cherrypy.response.timeout = ", cherrypy.response.timeout
+        try:
+            uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
+            #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
+            #print "test uploadfile = ", uploadfile
+
+            fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
+                              staticfolder = os.path.join('kosfb2', '__static__'),
+                              destfolder = os.path.join('kosfb2', '__static__', 'books'))
+
+            fu.upload(upload = True, files = uploadfile)
+            chs['message'] = u"Книги успешно загружены"
+#
+        except AttributeError:
+            chs['message'] = u"Книги не загружены. Что-то приключилось"
+        except KeyError:
+            chs['message'] = u"Книги не загружены. Что-то приключилось"
+
+        #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
+        raise cherrypy.HTTPRedirect("/main")
+
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     #Вспомогательные методы
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
+    #Функция выдает случайный набор из книг, найденных в БД
+    def randbook(self, *args, **kwargs):
+        #count - кол-во книг которые необходимо выбрать из БД
+        try:
+            count = kwargs['count']
+        except KeyError:
+            count = self.defbookcount
+
+        return dbm.find_books(randbook = True, count = count)
+
+
+    #Функция получает на входе результат поиска книг из БД
+    #На выходе функция выдает массив из книг которые должны отображаться на текущей странице
+    def get_page_booklist(self, fullbooklist = [], pagebookcount = 20, pagenumb = 0, pgnavstep = 0):
+        #fullbooklist - полный результат поиска
+        #pagebookcount - кол-во книг выводимых на страницу за один раз
+        #pagenumb - порядковый номер страницы
+
+        start_pos = 0
+        end_pos = 0
+        short_booklist = []
+
+        #Вычисляем кол-во страниц, необходимое для отображения результатов поиска
+        #pagebookcount - задается пользователем через web-форму
+        if pagebookcount > 0:
+            pagecount = int(math.ceil(len(fullbooklist) / pagebookcount))
+        else:
+            pagecount = 0
+
+        #Получаем новый номер страницы на которую перешел пользователь
+        if pagecount > 0:
+            pagenumb = pagenumb + int(pgnavstep)
+            if pagenumb < 0:
+                pagenumb = 0
+            elif pagenumb > pagecount - 1:
+                pagenumb = pagecount - 1
+        else:
+            pagenumb = 0
+
+        #print "new page = ", pagenumb
+
+        #Получаем номер первой книги на отображаемой странице
+        start_pos = pagenumb * pagebookcount
+        #Получаем номер последней книги на отображаемой странице
+        end_pos = start_pos + pagebookcount
+
+        #print "start_pos = ", start_pos
+        #print "end_pos = ", end_pos
+
+        #Берем из результа поиска книги для отображения на текущей странице
+        for i in xrange(start_pos, end_pos):
+            short_booklist.append(fullbooklist[i])
+
+        return (pagenumb, short_booklist)
+
+
     #Добавление новых книг в библиотеку после ошибки
     @cherrypy.expose
     def refindbook(self, *args, **kwargs):
@@ -252,55 +327,27 @@ class BookShelf(Base):
         #dbm = DBManager()
         dbm.init_genre()
 
-    #Функция получает на входе результат поиска
-    #На выходе функция выдает массив из книг которые должны отображаться на текущей странице
-    def get_page_booklist(self, fullbooklist = []):
-        #booklist - результат поиска
-        #pagebookcount - кол-во книг выводимых на страницу за один раз
-        #pagenumb - порядковый номер страницы
+    def init_findtype(self, type = 0, text = ''):
+        find_chkd = []
+        findtype = type #Тип поиска (где искать ключевое слово?) (Название 0, Автор 1, Серия 2, Издательская серия 3)
+        findkeyword = text #Ключевое слово для поиска
 
-        #Вычисляем кол-во страниц, необходимое для отображения результатов поиска
-        #pagebookcount - задается пользователем через web-форму
-        if self.pagebookcount > 0:
-            self.pagecount = int(math.ceil(len(fullbooklist) / self.pagebookcount))
-        else:
-            self.pagecount = 0
+        #Инициализируем массив с флагами о выборе "checked" для radio_buttons
+        for i in xrange(4):
+            find_chkd.append("")
 
-        #Тестовые значения для проверки перелистывания страниц
-        #self.pagecount = 10
+        find_chkd[int(findtype)] = 'checked'
+        return find_chkd, findtype, findkeyword
 
-        print "old page = ", self.pagenumb
-        print "self.pagenumb = ", self.pagenumb
-        print "self.pagecount = ", self.pagecount
-        print "pgnavstep = ", self.pgnavstep
+    def init_grouptype(self, type = 3):
+        group_chkd = []
+        grouptype = type #Тип группировки (где искать ключевое слово?) (Жанр 0, Серия 1, Издательская серия 2, Автор 3)
+        #Инициализируем массив с флагами о выборе "checked" для radio_buttons
+        for i in xrange(4):
+            group_chkd.append('')
 
-        #Получаем новый номер страницы на которую перешел пользователь
-        if self.pagecount > 0:
-            self.pagenumb = self.pagenumb + int(self.pgnavstep)
-            if self.pagenumb < 0:
-                self.pagenumb = 0
-            elif self.pagenumb > self.pagecount - 1:
-                self.pagenumb = self.pagecount - 1
-        else:
-            self.pagenumb = 0
-        print "new page = ", self.pagenumb
-
-        #Получаем номер первой книги на отображаемой странице
-        start_pos = self.pagenumb * self.pagebookcount
-        #Получаем номер последней книги на отображаемой странице
-        end_pos = start_pos + self.pagebookcount
-
-        print "start_pos = ", start_pos
-        print "end_pos = ", end_pos
-
-        #Берем из результа поиска книги для отображения на текущей странице
-        short_booklist = []
-        try:
-            for i in xrange(start_pos, end_pos):
-                short_booklist.append(fullbooklist[i])
-        except:
-            pass
-        return short_booklist
+        group_chkd[int(grouptype)] = 'checked'
+        return group_chkd, grouptype
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -308,16 +355,24 @@ class BookShelf(Base):
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
+    @cherrypy.expose
+    def maintreadtest(self):
+        print "THREAD MAIN"
+
+    @cherrypy.expose
+    def tread1test(self):
+        dbm.testqueue()
+
     #Использование сессий
     @cherrypy.expose
     def session_test(self, *args, **kwargs):
-        sss = cherrypy.session
+        chs = cherrypy.session
 
         out = ''
         for key, value in kwargs.items():
             out += key + '=' + value + '\n'
-            sss[key] = value
-        print sss
+            chs[key] = value
+        print chs
         return out
 
 

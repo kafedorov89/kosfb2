@@ -17,20 +17,12 @@
 	  		<input type="submit" name="startupload" value="Загрузить книги">
 		</div>
 	</form>
-	<form action="/reparsebook" method="post" enctype="multipart/form-data">		
-		<!-- Кнопка открытия диалога загрузки книг -->
-		<div class="controls">	
-	  		<input type="text" name="tmpfoldername" value=""><br>
-	  		<input type="submit" name="startupload" value="Разобрать книги">
-		</div>
-	</form>
-	<form action="/refindbook" method="post" enctype="multipart/form-data">		
-		<!-- Кнопка открытия диалога загрузки книг -->
-		<div class="controls">	
-	  		<input type="text" name="tmpfoldername" value=""><br>
-	  		<input type="submit" name="startupload" value="Найти fb2 файлы">
-		</div>
-	</form>
+	{% if uploading %}
+						
+	<a href="{{uploaderlog}}">
+		<br> Отчет о загрузке книг <br>
+	</a>
+	{% endif %}
 {% endblock %}
 
 {% block message %}

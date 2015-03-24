@@ -35,34 +35,41 @@ class FileUploader:
         #Получаем имя уникального временного каталога для хранения подготовленных и рабранных файлов книг с обложками
         #По данному разбору
         #try:
-        reupload = False
-        refind = True
+        #reupload = False
+        #refind = True
 
         try:
-            upload = kwargs['upload']
-        except:
-            upload = False
+            doupload = kwargs['doupload']
+        except KeyError:
+            doupload = False
             try:
-                find = kwargs['find']
+                dofind = kwargs['dofind']
                 tmpfolder = kwargs['tmpfolder']
                 mainfolder = os.path.join(self.uploadfolder, tmpfolder)
                 heapfolder = os.path.join(mainfolder, 'heap')
                 fb2prepfolder = os.path.join(mainfolder, 'fb2prep')
                 fb2errfolder = os.path.join(mainfolder, 'fb2error')
-            except:
-                find = False
+            except KeyError:
+                dofind = False
                 try:
-                    parse = kwargs['parse']
+                    doparse = kwargs['doparse']
                     tmpfolder = kwargs['tmpfolder']
                     mainfolder = os.path.join(self.uploadfolder, tmpfolder)
                     fb2prepfolder = os.path.join(mainfolder, 'fb2prep')
                     fb2errfolder = os.path.join(mainfolder, 'fb2error')
-                except:
-                    parse = False
+                except KeyError:
+                    doparse = False
 
-        if upload:
+        if doupload:
             print "UPLOAD --------------------------------------------------------------------------"
-            tmpfolder = str(uuid.uuid1())
+
+            try:
+                uid = kwargs['uid']
+                print "Получен идентификатор загрузчика"
+            except KeyError:
+                uid = str(uuid.uuid1())
+
+            tmpfolder = uid
             #Создаем временный каталог для работы с книгами
             mainfolder = os.path.join(self.uploadfolder, tmpfolder)
             print "mainfolder = ", mainfolder
@@ -90,20 +97,30 @@ class FileUploader:
             #---------------------------------------------------------------------------------------------
 
             #Получаем ссылку на файлы полученные из WEB-формы
-            uploadfiles = kwargs['files']
-            print "uploadfiles = ", uploadfiles
+            try:
+                uploadfiles = kwargs['files']
 
-            if type(uploadfiles).__name__ == 'list':
-                print "Получено несколько файлов"
-                for file in uploadfiles:
-                    fb2tools.filesaver(heapfolder, file.file, file.filename)
-            else:
-                print "Получен 1 файл"
-                file = uploadfiles
-                fb2tools.filesaver(heapfolder, file.file, file.filename)
-            find = True
+                print "uploadfiles = ", uploadfiles
 
-        if find:
+                if type(uploadfiles).__name__ == 'list':
+                    print "Получено несколько файлов"
+                    for file in uploadfiles:
+                        try:
+                            fb2tools.filesaver(heapfolder, file.file, file.filename)
+                        except AttributeError:
+                            raise
+                else:
+                    print "Получен 1 файл"
+                    file = uploadfiles
+                    try:
+                        fb2tools.filesaver(heapfolder, file.file, file.filename)
+                    except AttributeError:
+                        raise
+                find = True
+            except KeyError:
+                raise
+
+        if dofind:
             print "FIND --------------------------------------------------------------------------"
             #---------------------------------------------------------------------------------------------
 
@@ -118,7 +135,7 @@ class FileUploader:
 
             print "Всего было найдено %s fb2 файлов" % (ff.filecount,)
 
-        if parse:
+        if doparse:
             print "PARSE --------------------------------------------------------------------------"
             #Если поиск отработал успешно Запускаем модуль FileParser по списку найденных fb2 фалов
             fp = FileParser(fb2prepfolder, self.staticfolder, self.destfolder, fb2errfolder)
