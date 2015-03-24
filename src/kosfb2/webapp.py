@@ -77,16 +77,16 @@ class BookShelf(Base):
         sss = cherrypy.session
 
 #        if self.wasindex:
-        print "self.pagebookcount = ", self.pagebookcount
+        print "self.pagebookcount = ", sss.get('pagebookcount')
         print "main message = ", sss.get('message')
 
-        return {'find_chkd': self.find_chkd,
-                'findkeyword': self.findkeyword,
-                'group_chkd': self.group_chkd,
-                'pagenumb' : self.pagenumb,
-                'pagebookcount' : self.pagebookcount,
-                'books' : self.shortbooklist,
-                'message' : self.message
+        return {'find_chkd': sss.get('find_chkd'),
+                'findkeyword': sss.get('findkeyword'),
+                'group_chkd': sss.get('group_chkd'),
+                'pagenumb' : sss.get('pagenumb'),
+                'pagebookcount' : sss.get('pagebookcount'),
+                'books' : sss.get('shortbooklist'),
+                'message' : sss.get('message')
                 }
 #        else:
 #            pass
@@ -111,14 +111,8 @@ class BookShelf(Base):
 
         self.randbook()
 
-        return {'find_chkd': self.find_chkd,
-                'findkeyword': self.findkeyword,
-                'group_chkd': self.group_chkd,
-                'pagenumb' : self.pagenumb,
-                'pagebookcount' : self.pagebookcount,
-                'books' : self.shortbooklist,
-                'message' : self.message
-                }
+        raise cherrypy.HTTPRedirect("/main")
+
 
     #Добавление новых книг в библиотеку
     @cherrypy.expose

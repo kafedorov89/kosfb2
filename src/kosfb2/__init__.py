@@ -50,7 +50,7 @@ def get_applications (mode, basename):
     #handler - путь и имя класса cherrypy который может обрабатывать запросы к сервису
     #cfg - путь к файлу конфигурации cherrypy, который будет присоединен к уже применнным параметрам функцией merge
 
-   #Дополняем конфиг приложения описанием статических каталогов
+    #Дополняем конфиг приложения описанием статических каталогов
     static_config = {
         '/':
             {'tools.staticdir.on' : True,
@@ -95,7 +95,7 @@ def get_applications (mode, basename):
 
     cherrypy.config.update({'tools.sessions.on': True,
                         'tools.sessions.storage_type': "File",
-                        'tools.sessions.storage_path': 'sessions',
+                        'tools.sessions.storage_path': os.path.join('kosfb2', 'sessions'),
                         'tools.sessions.timeout': 10
                })
 
