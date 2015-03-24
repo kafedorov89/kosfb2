@@ -18,7 +18,7 @@ from fb2tools import encodeUTF8str as es
 from fb2tools import decodeUTF8str as ds
 from fb2tools import readaddspace as radd
 
-print random.sample([1, 2, 3, 4, 5, 6], 3)
+#print random.sample([1, 2, 3, 4, 5, 6], 3)
 
 #pool_name = __package__
 #cherrypy.engine.bg_tasks_queue = plugins.TasksQueue (cherrypy.engine)
@@ -47,8 +47,8 @@ class DBManager:
     #Метод добавления задач очереди запросов к БД
     def task_in_queue(self, query):
         try_count = 0
-        max_try_count = 10000
-        wait_time = 0.001
+        max_try_count = 1000
+        wait_time = 0.1
 
         taskuid = str(uuid.uuid1())
         task = self.create_task(query, taskuid)
@@ -686,21 +686,33 @@ class DBManager:
         tq = self.task_in_queue
         findrows = self.create_query_find_rows
 
-        cover = tq(findrows(keyword = fb2id,
+        result = tq(findrows(keyword = fb2id,
                                 showfields = ['coverexist', 'coverfile', 'zipfile'],
                                 keyfield = 'fb2id',
-                                table = 'book'))[0]
+                                table = 'book'))
 
-        if cover[0]:
-            if(os.path.exists(cover[1])):
-                os.remove(cover[1])
+        print "delete book result ", result
+
+        time.sleep(5)
+
+        try:
+            delbook = result[0]
+        except IndexError:
+            delbook = result
+
+        if delbook[0]:
+            if(os.path.exists(delbook[1])):
+                os.remove(delbook[1])
                 print "Файл обложки удален"
-        if(os.path.exists(cover[2])):
-            os.remove(cover[2])
+        if(os.path.exists(delbook[2])):
+            os.remove(delbook[2])
             print "Файл архива с книгой удален"
 
-        self.task_in_queue(self.create_query_delete_rows(table = 'book', field = 'fb2id', values = [fb2id]))
+        self.tq(self.create_query_delete_rows(table = 'book', field = 'fb2id', values = [fb2id]))
         print "Мета-данные из базы данных удалены"
+
+
+
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 

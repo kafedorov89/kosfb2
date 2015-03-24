@@ -40,7 +40,9 @@ class FileFinder(object):
             #Копируем все найденные fb2 файлы в каталог для дальнейшего парсинга
             for filename in fb2files:
                 with open(os.path.join(findpath, filename) , 'rb') as file:
-                    fb2tools.filesaver(self.fb2folder, file, ".fb2")
+                    fb2tools.filesaver(savepath = self.fb2folder,
+                                       file = file,
+                                       filename = ".fb2")
                     #self.wasfound = True
                     self.filecount = self.filecount + 1
 

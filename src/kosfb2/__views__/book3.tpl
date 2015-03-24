@@ -17,8 +17,8 @@
 	  		<input type="submit" name="startupload" value="Загрузить книги">
 		</div>
 	</form>
-	{% if uploading %}
-						
+	
+	{% if uploading and uploaderlog is not none%}					
 	<a href="{{uploaderlog}}">
 		<br> Отчет о загрузке книг <br>
 	</a>

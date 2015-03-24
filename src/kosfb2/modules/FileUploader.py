@@ -3,6 +3,7 @@ import os
 import shutil
 import uuid
 import cherrypy
+import time
 # FileFinder import FileFinder
 #from FileParser import FileParser
 #from DBManager import DBManager
@@ -32,6 +33,7 @@ class FileUploader:
 
     def upload(self, *args, **kwargs):
 
+        time.sleep(3)
         #Получаем имя уникального временного каталога для хранения подготовленных и рабранных файлов книг с обложками
         #По данному разбору
         #try:
@@ -106,19 +108,25 @@ class FileUploader:
                     print "Получено несколько файлов"
                     for file in uploadfiles:
                         try:
-                            fb2tools.filesaver(heapfolder, file.file, file.filename)
+                            fb2tools.filesaver(savepath = heapfolder,
+                                               file = file.file,
+                                               filename = file.filename)
                         except AttributeError:
                             raise
                 else:
                     print "Получен 1 файл"
                     file = uploadfiles
+
+                    print "file.filename", file.filename
                     try:
-                        fb2tools.filesaver(heapfolder, file.file, file.filename)
+                        fb2tools.filesaver(savepath = heapfolder,
+                                           file = file.file,
+                                           filename = file.filename)
                     except AttributeError:
-                        raise
-                find = True
+                        dofind = False
+                dofind = True
             except KeyError:
-                raise
+                dofind = False
 
         if dofind:
             print "FIND --------------------------------------------------------------------------"
@@ -128,7 +136,7 @@ class FileUploader:
             ff = FileFinder(mainfolder)
             #try:
             ff.find(heapfolder, 0)
-            parse = True
+            doparse = True
             #except:
             #    parse = False
             #    print "Ошибка. Поиск файлов fb2 не завершен правильно"
@@ -146,20 +154,22 @@ class FileUploader:
                 #Запускаем FileParser для одного файла и Добаляем метаданные по разобранному файлу в БД
                 if(dbm.add_book(fp.one_book_parser(os.path.join(fb2folder, filename)))):
                     print "Добавление файла и метаданных произошло успешно"
+
+                    #Переносим разобранные и добавленные файлы книг и обложек в общий каталог books
+                    try:
+                        prepbookfiles = os.listdir(fb2prepfolder)
+                        print "prepbookfiles: ", prepbookfiles
+                        for file in prepbookfiles:
+                            filepath = os.path.join(fb2prepfolder, file)
+                            print "filepath = ", filepath
+                            shutil.copy(filepath, self.destfolder)
+                        print "Разобранные книги перенесены в конечный каталог books"
+                    except IOError:
+                        print "Ошибка. Перенос архивов и обложек в конечный каталог books не произведен"
                 else:
                     print "Ошибка. Файл и метаданные не добавлены"
 
-            #Переносим разобранные и добавленные файлы книг и обложек в общий каталог books
-            try:
-                prepbookfiles = os.listdir(fb2prepfolder)
-                print "prepbookfiles: ", prepbookfiles
-                for file in prepbookfiles:
-                    filepath = os.path.join(fb2prepfolder, file)
-                    print "filepath = ", filepath
-                    shutil.copy(filepath, self.destfolder)
-                print "Разобранные книги перенесены в конечный каталог books"
-            except:
-                print "Ошибка. Перенос архивов и обложек в конечный каталог books не произведен"
+
 
             print "################################################################################"
             print "Всего разобрано %s книг" % (fp.callcount,)

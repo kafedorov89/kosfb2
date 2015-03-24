@@ -44,4 +44,13 @@ if __name__ == '__main__':
     if not debug and args.daemon:
         cherrypy.config ['daemon.on'] = True
 
+    #Удаляем сессии с прошлого запуска сервиса
+    sessionsfolder = os.path.join('kosfb2', 'sessions')
+    sessionsfiles = os.listdir(sessionsfolder)
+    print "sessionfiles: ", sessionsfiles
+    for file in sessionsfiles:
+        filepath = os.path.join(sessionsfolder, file)
+        print "filepath = ", filepath
+        os.remove(filepath)
+
     server.start ()

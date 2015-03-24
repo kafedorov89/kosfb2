@@ -376,16 +376,16 @@ class FileParser:
             bookfilename = "{0}{1}".format(Book['ID'], ".fb2")
             zipfilename = "{0}{1}".format(Book['ID'], ".zip")
             bookfile = os.path.join(self.fb2prepfolder, bookfilename)
-            zipfile = os.path.join(self.fb2prepfolder, zipfilename)
+            archfile = os.path.join(self.fb2prepfolder, zipfilename)
 
             print bookfile
             if(os.path.exists(bookfile)):
                 print "Временный файл книги уже существует и будет заменен на более новый"
                 os.remove(bookfile) #Удаляем файл с временной книгой
 
-            if(os.path.exists(zipfile)):
+            if(os.path.exists(archfile)):
                 print "Временный файл архива книги уже существует и будет заменен на более новый"
-                os.remove(zipfile) #Удаляем файл с временным
+                os.remove(archfile) #Удаляем файл с временным
 
             #Переносим разбираемый файл с книгой в каталог fb2prep для  архивации
             #shutil.copy(filepath, bookfile)
@@ -393,17 +393,17 @@ class FileParser:
 
             #Упаковываем файл книги в архив
 
-            try:
-                with zipfile.ZipFile(zipfile, 'w') as myzip:
+            #try:
+            with zipfile.ZipFile(archfile, 'w') as myzip:
 
-                    myzip.write(filepath, zipfilename, zipfile.ZIP_DEFLATED)
-                    myzip.close()
+                myzip.write(filepath, zipfilename, zipfile.ZIP_DEFLATED)
+                myzip.close()
 
-                    Book["ZipFile"] = os.path.join("books", zipfilename)
-            except:
-                print "Архив с файлом fb2 создать не удалось"
-                err()
-                return {}
+                Book["ZipFile"] = os.path.join("books", zipfilename)
+#            except:
+#                print "Архив с файлом fb2 создать не удалось"
+#                err()
+#                return {}
             #--------------------------------------------------------------------------------------------------------
 
 

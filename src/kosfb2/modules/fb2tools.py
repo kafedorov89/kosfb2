@@ -57,10 +57,14 @@ codecs.register_error("fb2_replacer", replace_error_handler)
 #Сохраняет переданный файл - file в нужном месте - savepath под нужным именем - filename
 def filesaver(Rename = True, *args, **kwargs):
     try:
-        savepath = args[0]
-        file = args[1]
-        filename = args[2]
-    except:
+        print "args[0]", kwargs['savepath']
+        print "args[1]", kwargs['file']
+        print "args[2]", kwargs['filename']
+
+        savepath = kwargs['savepath']
+        file = kwargs['file']
+        filename = kwargs['filename']
+    except KeyError:
         print "Ошибка аргументов функции filesaver"
 
     print "savefilename = ", filename
@@ -146,7 +150,9 @@ def safeextract(*args, **kwargs):
             if postfix in [".fb2", ".rar", ".zip"]:
                 try:
                     unpackedfile = arch.open(filename)
-                    filesaver(dest_dir, unpackedfile, postfix)
+                    filesaver(savepath = dest_dir,
+                              file = unpackedfile,
+                              filename = postfix)
                 except:
                     print "Ошибка. Не удалось распаковать распознанный архив."
 

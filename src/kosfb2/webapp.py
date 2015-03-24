@@ -12,6 +12,7 @@ import time
 #from cherrybase import db
 from kosfb2.modules import FileUploader, DBManager, FileParser
 import kosfb2.modules.fb2tools as fb2tools
+import functools
 
 print cherrypy.engine.state
 
@@ -46,6 +47,18 @@ class BookShelf(Base):
     @cherrypy.tools.jinja (template = 'book3.tpl')
     def main(self):
         chs = cherrypy.session
+
+        print "############## MAIN ###############"
+        print "wasindex", chs.get('wasindex')
+        print "find_chkd", chs.get('find_chkd')
+        print "findkeyword", chs.get('findkeyword')
+        print "group_chkd", chs.get('group_chkd')
+        print "pagenumb", chs.get('pagenumb')
+        print "pagebookcount", chs.get('pagebookcount')
+        print "shortbooklist", chs.get('shortbooklist')
+        print "fullbooklist", chs.get('fullbooklist')
+        print "message", chs.get('message')
+
         mainparams = {'find_chkd': chs.get('find_chkd'),
                     'findkeyword': chs.get('findkeyword'),
                     'group_chkd': chs.get('group_chkd'),
@@ -59,8 +72,10 @@ class BookShelf(Base):
 
             if chs.get('uploading'):
                 uploadparams = {'uploaderlog': chs.get('uploaderlog'),
-                                'uploading': True}
-                return mainparams.update(uploadparams)
+                                'uploading': 'True'}
+                print "before ", mainparams
+                mainparams = dict(mainparams, **uploadparams)
+                print "after ", mainparams
 
             return mainparams
         else:
@@ -82,8 +97,10 @@ class BookShelf(Base):
         chs['shortbooklist'] = []
         chs['message'] = u"Первый запуск"
 
+
+        self.showbook()
         #cherrypy.response.cookie['user_name'] = 'TurboGears User' #Пишем cookies. Пример
-        raise cherrypy.HTTPRedirect("/main")
+        #raise cherrypy.HTTPRedirect("/main")
 
     @cherrypy.expose
     def findbook(self, *args, **kwargs):
@@ -148,9 +165,9 @@ class BookShelf(Base):
         chs['shortbooklist'] = []
 
         chs['pagenumb'], chs['shortbooklist'] = self.get_page_booklist(fullbooklist = chs.get('fullbooklist'),
-                                                                           pagebookcount = pagebookcount,
-                                                                           pagenumb = pagenumb,
-                                                                           pgnavstep = pgnavstep)
+                                                                       pagebookcount = pagebookcount,
+                                                                       pagenumb = pagenumb,
+                                                                       pgnavstep = pgnavstep)
 #            print chs['shortbooklist']
 #            chs['message'] = u"Книги найдены"
 #        except: #ErrorGetShortBookList
@@ -165,7 +182,7 @@ class BookShelf(Base):
     @cherrypy.expose
     def uploadbook(self, *args, **kwargs):
         chs = cherrypy.session
-        errmessage = u"Книги не загружены. Что-то приключилось"
+        #errmessage = u"Книги не загружены. Что-то приключилось"
 
         cherrypy.response.timeout = 3600
         print "cherrypy.response.timeout = ", cherrypy.response.timeout
@@ -180,16 +197,11 @@ class BookShelf(Base):
                           staticfolder = os.path.join('kosfb2', '__static__'),
                           destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
-        uploader = fu.upload
-
-        print uploader
-        #uploader.doupload = True
-
-        uploader.files = uploadfile
-        uploader.uid = uploaderuid = str(uuid.uuid1())
+        uploaderuid = str(uuid.uuid1())
+        uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfolder = uploaderuid)
         tq.put(uploader)
 
-        chs['uploaderlog'] = os.path.join('kosfb2', '__static__', 'books', "%s_upload.log" % (uploaderuid))
+        #chs['uploaderlog'] = os.path.join('kosfb2', '__static__', 'books', "%s.log" % (uploaderuid))
         chs['uploading'] = True
         raise cherrypy.HTTPRedirect("/main")
 
