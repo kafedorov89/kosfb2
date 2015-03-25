@@ -54,6 +54,11 @@ replace_spc_error_handler = lambda error: (u'_' * (error.end - error.start), err
 #Добавляем обработчик ошибок кодирования в библиотеку codecs
 codecs.register_error("fb2_replacer", replace_error_handler)
 
+def fileremover(file = None):
+    if(os.path.exists(file)):
+        os.remove(file)
+        print "Файл удален"
+
 #Сохраняет переданный файл - file в нужном месте - savepath под нужным именем - filename
 def filesaver(Rename = True, *args, **kwargs):
     try:

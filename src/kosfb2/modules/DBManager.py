@@ -17,6 +17,7 @@ import random
 from fb2tools import encodeUTF8str as es
 from fb2tools import decodeUTF8str as ds
 from fb2tools import readaddspace as radd
+from fb2tools import fileremover as frem
 
 #print random.sample([1, 2, 3, 4, 5, 6], 3)
 
@@ -61,6 +62,7 @@ class DBManager:
                 try:
                     #print self.result[taskuid]
                     result = self.result[taskuid] #Сохраняем результат выполения задачи
+                    print "task_result = ", result
                     self.result = {i:self.result[i] for i in self.result if i != taskuid} #Удаляем результат выполнения задачи из словаря
                     return result
                 except:
@@ -686,6 +688,17 @@ class DBManager:
         tq = self.task_in_queue
         findrows = self.create_query_find_rows
 
+        tq(self.create_query_delete_rows(table = 'book', field = 'fb2id', values = [fb2id]))
+
+        archfile = os.path.join("kosfb2", "__static__", "books", "%s%s" % (fb2id, ".zip"))
+        jpgfile = os.path.join("kosfb2", "__static__", "books", "%s%s" % (fb2id, ".jpg"))
+        pngfile = os.path.join("kosfb2", "__static__", "books", "%s%s" % (fb2id, ".png"))
+
+        frem(jpgfile)
+        frem(pngfile)
+        frem(archfile)
+
+        '''
         result = tq(findrows(keyword = fb2id,
                                 showfields = ['coverexist', 'coverfile', 'zipfile'],
                                 keyfield = 'fb2id',
@@ -700,16 +713,10 @@ class DBManager:
         except IndexError:
             delbook = result
 
-        if delbook[0]:
-            if(os.path.exists(delbook[1])):
-                os.remove(delbook[1])
-                print "Файл обложки удален"
-        if(os.path.exists(delbook[2])):
-            os.remove(delbook[2])
-            print "Файл архива с книгой удален"
+        
+        '''
 
-        self.tq(self.create_query_delete_rows(table = 'book', field = 'fb2id', values = [fb2id]))
-        print "Мета-данные из базы данных удалены"
+        print "Мета-данные и файлы книги удалены"
 
 
 
@@ -804,7 +811,7 @@ class DBManager:
         table = kwargs['table']                 #Имя таблицы
         field = kwargs['field']    #Поля которым необходимо присвоить значения
 
-        query_str = "DELETE FROM {0} WHERE {1} IN ({2}) RETURNING uid;".format(table, field, self.sqlv(kwargs['values']))
+        query_str = "DELETE FROM {0} WHERE {1} IN ({2});".format(table, field, self.sqlv(kwargs['values']))
         print "query_str = ", query_str
 
         return query_str
