@@ -6,6 +6,7 @@ import zipfile
 import rarfile
 import platform
 import fb2tools
+import time
 
 class FileFinder(object):
     def __init__(self, *args, **kwargs):
@@ -17,6 +18,8 @@ class FileFinder(object):
         #self.wasfound = False
 
     def find(self, *args, **kwargs):
+        time.sleep(0.1)
+
         #try:
         findpath = args[0]
         level = args[1]

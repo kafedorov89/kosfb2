@@ -12,6 +12,7 @@ import uuid
 from fb2tools import encodeUTF8str as es
 import functools
 import re
+import time
 
 #import DBManager
 root = __name__.partition('.')[0]
@@ -38,9 +39,13 @@ class FileParser:
 
     #Парсер для одной итерации. Разбирает передаваемый ему filename и возвращает словарь Book с метаданными
     def one_book_parser(self, filepath):
+        print "Разбираются мета-данные файла: ", filepath
+        time.sleep(0.1)
         err = functools.partial(self.errplus1, filepath)
 
         self.callcount = self.callcount + 1
+        print "Файл №[%s]" % self.callcount
+
         Book = {}
         Annotation = ""
         Genres = []
@@ -58,35 +63,44 @@ class FileParser:
             fb2schemafile = os.path.join(root, "fb2schema", "FictionBook_2_2.xsd")
             with open(fb2schemafile, 'r') as f:
                 schema = LX.XMLSchema(file = f)
-                #schema = f.read()
 
-            #schema = LX.XMLSchema(schema)
             myparser = LX.XMLParser(recover = True, schema = schema)
-            print "filepath = ", filepath
-
-            #Получаем полный путь к файлу книги
-            #filepath = os.path.join(self.fb2prepfolder, filename)
             book = LX.parse(filepath, myparser)
             isvalid = True
-        except:
+        except LX.XMLSyntaxError:
+            print "XMLSyntaxError"
+
             try:
                 fb2schemafile = os.path.join(root, "fb2schema", "FictionBook_2_0.xsd")
                 with open(fb2schemafile, 'r') as f:
                     schema = LX.XMLSchema(file = f)
-                    #schema = f.read()
 
-                #schema = LX.XMLSchema(schema)
                 myparser = LX.XMLParser(recover = True, schema = schema)
 
-
-                print "filepath = ", filepath
-
-                #Получаем полный путь к файлу книги
-                #filepath = os.path.join(self.fb2prepfolder, filename)
                 book = LX.parse(filepath, myparser)
                 isvalid = True
-            except:
+            except LX.XMLSyntaxError:
+                print "XMLSyntaxError"
                 isvalid = False
+            except LX.SchematronError:
+                print "SchematronError"
+            except LX.XMLSchemaError:
+                print "XMLSchemaError"
+            except LX.XMLSchemaParseError:
+                print "XMLSchemaParseError"
+            except LX.XMLSchemaValidateError:
+                print "XMLSchemaValidateError"
+
+        except LX.SchematronError:
+            print "SchematronError"
+        except LX.XMLSchemaError:
+            print "XMLSchemaError"
+        except LX.XMLSchemaParseError:
+            print "XMLSchemaParseError"
+        except LX.XMLSchemaValidateError:
+            print "XMLSchemaValidateError"
+
+#
         #--------------------------------------------------------------------------------------------------------
 
         if isvalid:

@@ -9,23 +9,48 @@ import zipfile
 import shutil
 import math
 
+#Функция добавляет пробел перед строкой если она не пустая
 def readaddspace(string):
     if string is not None and isinstance(string, str):
         text = decodeUTF8str(string)
         if text != "":
-            return "%s" % (text)
+            return " %s" % (text)
         else:
             return ""
     else:
         return ""
 
+#########################################################################################################################
+#Набор функций против SQL-инъекций
+
+#Основная функция объединяющая все проверки из замены опасных символов и конструкций
+def mask_sql_injection(string):
+    if isinstance(string, str):
+        clear_string = mask_quotes(string)
+    return clear_string
+
 #Маскируем кавычки для записи в БД
-def maskquotes(string):
+def mask_quotes(string):
     if isinstance(string, str):
         return string.replace("\'", "\'\'")#.replace('"', '\\"')
     else:
-        return string
-    #return string
+        return ''
+
+########################################################################################################################
+
+
+
+#Функция удаляет содержимое указанного каталога - folder
+def remove_all_from_folder(folder):
+    files = os.listdir(folder)
+    for file in files:
+        filepath = os.path.join(folder, file)
+        print "filepath = ", filepath
+        os.remove(filepath)
+
+def remove_tmp_folder(folder):
+    if os.path.exists(folder):
+        shutil.rmtree(folder)
 
 #Удобное создание временного каталога в нужном месте
 def create_tmp_folder(rootpath, foldername):
@@ -172,7 +197,7 @@ def safeextract(*args, **kwargs):
                 '''
         #logfile.write("errorcount = {0}\n".format(errorcount))
 
-#Получаем имя файла из пути
+#Получаем имя файла без пути
 def clearfilename(path):
     head, tail = ntpath.split(path)
     return tail or ntpath.basename(head)

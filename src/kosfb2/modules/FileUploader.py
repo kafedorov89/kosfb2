@@ -8,7 +8,9 @@ import time
 #from FileParser import FileParser
 #from DBManager import DBManager
 from kosfb2.modules import FileFinder, DBManager, FileParser
-import fb2tools
+from fb2tools import filesaver as fs
+from fb2tools import create_tmp_folder as ctf
+from fb2tools import remove_tmp_folder as rtf
 
 dbm = DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
 
@@ -33,7 +35,7 @@ class FileUploader:
 
     def upload(self, *args, **kwargs):
 
-        time.sleep(0.5)
+        time.sleep(5)
         #Получаем имя уникального временного каталога для хранения подготовленных и рабранных файлов книг с обложками
         #По данному разбору
         #try:
@@ -83,24 +85,24 @@ class FileUploader:
                 os.mkdir(mainfolder, 0777)
 
             #Создаем временный каталог для всех загружаемых файлов
-            heapfolder = fb2tools.create_tmp_folder(mainfolder, 'heap')
+            heapfolder = ctf(mainfolder, 'heap')
 
             #Создаем временный каталог для найденных fb2 файлов
-            fb2tools.create_tmp_folder(mainfolder, 'fb2')
+            ctf(mainfolder, 'fb2')
 
             #Создаем временный каталог для распаковывания архивов
-            fb2tools.create_tmp_folder(mainfolder, 'arch')
+            ctf(mainfolder, 'arch')
 
             #Создаем временный каталог для разобранных файлов fb2
-            fb2prepfolder = fb2tools.create_tmp_folder(mainfolder, 'fb2prep')
+            fb2prepfolder = ctf(mainfolder, 'fb2prep')
 
             #Создаем временный каталог для разобранных файлов fb2
-            fb2errfolder = fb2tools.create_tmp_folder(mainfolder, 'fb2error')
+            fb2errfolder = ctf(mainfolder, 'fb2error')
             #---------------------------------------------------------------------------------------------
 
             #Получаем ссылку на файлы полученные из WEB-формы
             try:
-                uploadfiles = kwargs['files']
+                uploadfiles = kwargs['files'] #SQL inj
 
                 print "uploadfiles = ", uploadfiles
 
@@ -108,7 +110,7 @@ class FileUploader:
                     print "Получено несколько файлов"
                     for file in uploadfiles:
                         try:
-                            fb2tools.filesaver(savepath = heapfolder,
+                            fs(savepath = heapfolder,
                                                file = file.file,
                                                filename = file.filename)
                         except AttributeError:
@@ -119,7 +121,7 @@ class FileUploader:
 
                     print "file.filename", file.filename
                     try:
-                        fb2tools.filesaver(savepath = heapfolder,
+                        fs(savepath = heapfolder,
                                            file = file.file,
                                            filename = file.filename)
                     except AttributeError:
@@ -185,7 +187,8 @@ class FileUploader:
 
 
         #if Добавление файлов произошло успешно :
-            #Удаляем временный каталог
+        #Удаляем временный каталог
+        rtf(tmpfolder)
 
 
 '''

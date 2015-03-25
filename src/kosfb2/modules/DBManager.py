@@ -11,13 +11,15 @@ import time
 import functools
 import os
 import itertools
-from fb2tools import maskquotes as mq
+from fb2tools import mask_sql_injection as msj
 #from psycopg2.extensions import adapt
 import random
 from fb2tools import encodeUTF8str as es
 from fb2tools import decodeUTF8str as ds
 from fb2tools import readaddspace as radd
 from fb2tools import fileremover as frem
+#import psycopg2.extensions as dbext
+import psycopg2
 
 #print random.sample([1, 2, 3, 4, 5, 6], 3)
 
@@ -46,13 +48,19 @@ class DBManager:
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     #Метод добавления задач очереди запросов к БД
-    def task_in_queue(self, query):
+    def execute_easy_task(self, query):
+        taskuid = str(uuid.uuid1())
+        return self.easy_task(sqlquery = query, taskuid = taskuid)
+
+
+    #Метод добавления задач очереди запросов к БД
+    def execute_task_in_queue(self, query):
         try_count = 0
-        max_try_count = 1000
-        wait_time = 0.1
+        max_try_count = 100
+        wait_time = 1
 
         taskuid = str(uuid.uuid1())
-        task = self.create_task(query, taskuid)
+        task = self.create_queue_task(query, taskuid)
 
         #print "self.taskqueue = ", self.taskqueue
 
@@ -84,8 +92,8 @@ class DBManager:
     '''
 
     #Генератор задачи - task содержащей запросы к БД котрую можно добавить в очередь с помощью - put_task_to_queue(task)
-    def create_task(self, query, taskuid):
-        return functools.partial(self.easy_task, sqlquery = query, taskuid = taskuid)
+    def create_queue_task(self, query, taskuid):
+        return functools.partial(self.easy_queue_task, sqlquery = query, taskuid = taskuid)
 
     @usedb
     def easy_task(self, db, *args, **kwargs):
@@ -95,9 +103,31 @@ class DBManager:
         dbcursor = db.cursor()
         dbcursor.execute(query)
         try:
+            result = dbcursor.fetchall()
+            #print "Good result"
+        except psycopg2.ProgrammingError:
+            #print "Empty result"
+            result = []
+
+        dbcursor.close()
+        return result
+
+        #time.sleep (1)
+        #self.readylist[taskuid] = True
+
+    @usedb
+    def easy_queue_task(self, db, *args, **kwargs):
+        query = kwargs['sqlquery']
+        taskuid = kwargs['taskuid']
+
+        dbcursor = db.cursor()
+        dbcursor.execute(query)
+        try:
             self.result[taskuid] = dbcursor.fetchall()
-        except:
+            #print "Good result"
+        except psycopg2.ProgrammingError:
             self.result[taskuid] = []
+            #print "Empty result"
         dbcursor.close()
 
         #time.sleep (1)
@@ -126,15 +156,16 @@ class DBManager:
         exists = False
         iscorrect = False
 
-        tq = self.task_in_queue
+        tq = self.execute_task_in_queue
         findrows = self.create_query_find_rows
         insertrow = self.create_query_insert_row
         updaterow = self.create_query_update_row
+        et = self.execute_easy_task
 
         try:
             bookid = Book['ID']
             booktitle = Book['Title']
-        except:
+        except KeyError:
             print "Ошибка. Пустые мета-данные. В базу нечего добавлять"
             return False
 
@@ -204,7 +235,7 @@ class DBManager:
                  
             '''
             try:
-                book_uid = tq(insertrow(table = 'book',
+                book_uid = et(insertrow(table = 'book',
                                         fields = ['fb2id',
                                                   'iscorrect',
                                                   'version',
@@ -221,7 +252,7 @@ class DBManager:
                                                   Book["CoverFile"],
                                                   Book["CoverExist"],
                                                   Book["ZipFile"]]))[0][0]
-            except:
+            except KeyError:
                 print "Ошибка. Не удалось добавить новую запись в таблицу book"
                 return False
 
@@ -229,12 +260,12 @@ class DBManager:
             #Пробуем получить описание книги
             try:
                 annotation = Book["Annotation"]
-                tq(updaterow(table = 'book',
+                et(updaterow(table = 'book',
                          updatefields = ['annotation'],
                          values = [annotation]),
                          keyfield = 'uid',
                          keyword = book_uid)
-            except:
+            except KeyError:
                 print "Ошибка. Не удалось получить описание книги"
 
             '''
@@ -252,17 +283,17 @@ class DBManager:
             try:
                 lang = Book['Lang']
 
-                lang_uid = tq(findrows(keyword = lang,
+                lang_uid = et(findrows(keyword = lang,
                                        showfields = ['uid'],
                                        keyfield = 'langcode',
                                        table = 'language'))
 
-                tq(updaterow(table = 'book',
+                et(updaterow(table = 'book',
                              updatefields = ['langid'],
                              values = [lang_uid[0][0]],
                              keyfield = 'uid',
                              keyword = book_uid))
-            except:
+            except KeyError:
                 print "Ошибка. Не удалось получить язык книги"
             '''
             #------------------------------------------
@@ -278,26 +309,26 @@ class DBManager:
                 sequences = Book['Sequences']
 
                 for sequence in Book['Sequences']:
-                    sequence_uid = tq(findrows(keyword = sequence['Name'],
+                    sequence_uid = et(findrows(keyword = sequence['Name'],
                                       showfields = ['uid'],
                                       keyfield = 'name',
                                       table = 'sequence'))
 
                     #Если не нашли серию в БД
                     if len(sequence_uid) <= 0:
-                        sequence_uid = self.tq(insertrow(table = 'sequence',
+                        sequence_uid = et(insertrow(table = 'sequence',
                                                          fields = ['name'],
                                                          values = [sequence['Name']]))
 
                     #Добавляемсвязь серии и книги
-                    self.tq(insertrow(table = 'booksequence',
+                    et(insertrow(table = 'booksequence',
                                       fields = ['bookid',
                                                 'sequenceid',
                                                 'volume'],
                                       values = [book_uid,
                                                 sequence_uid[0][0],
                                                 sequence['Volume']]))
-            except:
+            except KeyError:
                 print "Ошибка. Не удалось получить данные по сериям книги"
             '''
             #------------------------------------------  
@@ -310,28 +341,28 @@ class DBManager:
 #                             showfields = ['uid'],
 #                             table = 'publisher',
 #                             keyfield = 'name')
-#            publisher_uid = tq(query)
+#            publisher_uid = et(query)
 
             #Пробуем получить описание книги
             try:
                 publisher = Book["Publisher"]
-                publisher_uid = tq(findrows(keyword = publisher,
+                publisher_uid = et(findrows(keyword = publisher,
                                          showfields = ['uid'],
                                          keyfield = 'name',
                                          table = 'publisher'))
 
                 #Если не нашли издателя в БД
                 if len(publisher_uid) <= 0:
-                    publisher_uid = tq(insertrow(table = 'publisher',
+                    publisher_uid = et(insertrow(table = 'publisher',
                                                  fields = ['name'],
                                                  values = [publisher]))
 
-                tq(updaterow(table = 'book',
+                et(updaterow(table = 'book',
                              updatefields = ['publisherid'],
                              values = [publisher_uid[0][0]],
                              keyfield = 'uid',
                              keyword = book_uid))
-            except:
+            except KeyError:
                 print "Ошибка. Не удалось получить название издателя книги"
 
 
@@ -352,26 +383,26 @@ class DBManager:
                 sequences = Book['PubSequences']
 
                 for pubsequence in Book['PubSequences']:
-                    pubsequence_uid = tq(findrows(keyword = pubsequence['Name'],
+                    pubsequence_uid = et(findrows(keyword = pubsequence['Name'],
                                       showfields = ['uid'],
                                       keyfield = 'name',
                                       table = 'pubsequence'))
 
                     #Если не нашли серию в БД
                     if len(pubsequence_uid) <= 0:
-                        pubsequence_uid = tq(insertrow(table = 'pubsequence',
+                        pubsequence_uid = et(insertrow(table = 'pubsequence',
                                                        fields = ['name'],
                                                        values = [pubsequence['Name']]))
 
                     #Добавляемсвязь серии и книги
-                    tq(insertrow(table = 'bookpubsequence',
+                    et(insertrow(table = 'bookpubsequence',
                                 fields = ['bookid',
                                           'sequenceid',
                                         'volume'],
                                 values = [book_uid,
                                           pubsequence_uid[0][0],
                                           pubsequence['Volume']]))
-            except:
+            except KeyError:
                 print "Ошибка. Не удалось получить данные по издательским сериям книги"
             '''
 
@@ -387,22 +418,22 @@ class DBManager:
                 print "Genres = ", genres
                 for genre in genres:
                     try:
-                        genre_uid = tq(findrows(keyword = genre,
+                        genre_uid = et(findrows(keyword = genre,
                                                 showfields = ['uid'],
                                                 keyfield = 'code',
                                                 table = 'genre'))[0][0]
                     except:
                         print "В книге указан не известный жанр: ", genre
-                        genre_uid = tq(insertrow(table = 'genre',
+                        genre_uid = et(insertrow(table = 'genre',
                                                  fields = ['code', 'name'],
                                                  values = [genre, 'Неизвестный жанр']))[0][0]
                     finally:
-                        tq(insertrow(table = 'bookgenre',
+                        et(insertrow(table = 'bookgenre',
                                      fields = ['bookid',
                                                'genreid'],
                                      values = [book_uid,
                                                genre_uid]))
-            except:
+            except KeyError:
                 print "Ошибка. Не удалось получить данные по жанрам книги"
 
             '''
@@ -442,10 +473,10 @@ class DBManager:
                     except:
                         nick = ''
 
-                    author_uid = tq(self.create_query_find_authors(lastname = last, firstname = first, middlename = middle, nickname = nick))
+                    author_uid = et(self.create_query_find_authors(lastname = last, firstname = first, middlename = middle, nickname = nick))
 
                     if len(author_uid) <= 0:
-                        author_uid = tq(insertrow(table = 'author',
+                        author_uid = et(insertrow(table = 'author',
                                                   fields = ['lastname',
                                                             'firstname',
                                                             'middlename',
@@ -455,16 +486,16 @@ class DBManager:
                                                             middle,
                                                             nick]))
 
-                    tq(insertrow(table = 'bookauthor',
+                    et(insertrow(table = 'bookauthor',
                                  fields = ['bookid',
                                            'authorid'],
                                  values = [book_uid,
                                            author_uid[0][0]]))
-            except:
+            except KeyError:
                 print "Ошибка. Авторы книги не найдены"
 
 
-            tq(updaterow(table = 'book',
+            et(updaterow(table = 'book',
                          updatefields = ['iscorrect'],
                          values = [True],
                          keyfield = 'uid',
@@ -487,6 +518,9 @@ class DBManager:
 
     #Поиск книг
     def find_books(self, *args, **kwargs):
+        tq = self.execute_task_in_queue
+        et = self.execute_easy_task
+
         #Если orderfield не передано или пусто то используем сортировку по алфавиту
         try:
             randbook = kwargs['randbook'] #
@@ -549,7 +583,7 @@ class DBManager:
 
         query = query.replace('ORDERBYSTRING', orderbysrting)
 
-        print query
+        #print query
 
         '''
         for line in content:
@@ -565,7 +599,7 @@ class DBManager:
 
         #print query
 
-        books_array = self.task_in_queue(query)
+        books_array = et(query)
 
         #Если включен режим случайной выборки, то отбираем n книг из всей выборки
         if randbook:
@@ -685,10 +719,12 @@ class DBManager:
     #Каскадное удаление записей о книге и файлов
     @usedb
     def delete_book(self, db, fb2id):
-        tq = self.task_in_queue
-        findrows = self.create_query_find_rows
+        tq = self.execute_task_in_queue
+        et = self.execute_easy_task
 
-        tq(self.create_query_delete_rows(table = 'book', field = 'fb2id', values = [fb2id]))
+        #findrows = self.create_query_find_rows
+
+        et(self.create_query_delete_rows(table = 'book', field = 'fb2id', values = [fb2id]))
 
         archfile = os.path.join("kosfb2", "__static__", "books", "%s%s" % (fb2id, ".zip"))
         jpgfile = os.path.join("kosfb2", "__static__", "books", "%s%s" % (fb2id, ".jpg"))
@@ -732,9 +768,9 @@ class DBManager:
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     def sqlv(self, valuearray):
-        str_values = ["{0}".format(mq(str(val))) for val in valuearray]
+        str_values = ["{0}".format(msj(str(val))) for val in valuearray]
         #str_values = [str(val) for val in valuearray]
-        print "str_values = ", str_values
+        #print "str_values = ", str_values
         return "{0}{1}{2}".format("'", "', '".join(str_values), "'")   #Конвертируем все значения в строки
 
     #Генератор SQL-запроса для поиска подстроки keyword в поле field в таблице table c необязательным упорядочиванием по orderfield
@@ -744,7 +780,7 @@ class DBManager:
         middlename = kwargs['middlename']
         nickname = kwargs['nickname']
 
-        query_str = "SELECT uid FROM author WHERE lastname LIKE '%{0}%' AND firstname LIKE '%{1}%' AND middlename LIKE '%{2}%' AND nickname LIKE '%{3}%'".format(mq(lastname), mq(firstname), mq(middlename), mq(nickname))
+        query_str = "SELECT uid FROM author WHERE lastname LIKE '%{0}%' AND firstname LIKE '%{1}%' AND middlename LIKE '%{2}%' AND nickname LIKE '%{3}%'".format(msj(lastname), msj(firstname), msj(middlename), msj(nickname))
         #print query_str
         return query_str
 
@@ -752,7 +788,7 @@ class DBManager:
     #Правильно?
     @usedb
     def check_book_iscorrect(self, db, fb2id):
-        select_query = "SELECT iscorrect from book WHERE fb2id = '{0}';".format(mq(fb2id))
+        select_query = "SELECT iscorrect from book WHERE fb2id = '{0}';".format(msj(fb2id))
         select_result = db.select_value(select_query)
         #print select_result
         return bool(select_result)
@@ -761,11 +797,11 @@ class DBManager:
     #Существует?
     @usedb
     def check_value_exist(self, db, table, field, value):
-        select_query = "SELECT count(*) from {0} WHERE {1} = '{2}';".format(table, field, mq(value))
-        print "select_query = ", select_query
+        select_query = "SELECT count(*) from {0} WHERE {1} = '{2}';".format(table, field, msj(value))
+        #print "select_query = ", select_query
         select_result = db.select_value(select_query)
 
-        print "select_result = ", select_result
+        #print "select_result = ", select_result
 
         if int(select_result) > 0:
             return True
@@ -776,10 +812,10 @@ class DBManager:
     #Больше?
     @usedb
     def check_value_bigger(self, db, table, field, value, id_name, id_value):
-        select_query = "SELECT {0} from {1} WHERE {2} = '{3}';".format(field, table, id_name, mq(id_value))
-        print "select_query = ", select_query
+        select_query = "SELECT {0} from {1} WHERE {2} = '{3}';".format(field, table, id_name, msj(id_value))
+        #print "select_query = ", select_query
         select_result = db.select_value(select_query)
-        print "select_result = ", select_result
+        #print "select_result = ", select_result
         if float(value) > float(select_result):
             return True
         else:
@@ -789,7 +825,7 @@ class DBManager:
     def create_query_find_rows(self, *args, **kwargs):
         #Если orderfield не передано или пусто то используем сортировку по алфавиту
 
-        keyword = mq(kwargs['keyword']) #Ключевое слово для поиска
+        keyword = msj(kwargs['keyword']) #Ключевое слово для поиска
 
         showfields = ', '.join(kwargs['showfields']) #Поля таблицы которые нужно вывести в поиске
         keyfield = kwargs['keyfield'] #Поле таблицы по которому необходимо производить поиск
@@ -802,7 +838,7 @@ class DBManager:
             orderfield = " "
 
         query_str = "SELECT {0} FROM {1} WHERE {2} LIKE '%{3}%' {4};".format(showfields, table, keyfield, keyword, orderfield)
-        print "query_str = ", query_str
+        #print "query_str = ", query_str
 
         return query_str
 
@@ -812,7 +848,7 @@ class DBManager:
         field = kwargs['field']    #Поля которым необходимо присвоить значения
 
         query_str = "DELETE FROM {0} WHERE {1} IN ({2});".format(table, field, self.sqlv(kwargs['values']))
-        print "query_str = ", query_str
+        #print "query_str = ", query_str
 
         return query_str
 
@@ -824,7 +860,7 @@ class DBManager:
         query_str = str("INSERT INTO {0} ({1}) VALUES ({2}) RETURNING uid;".format(table,
                                                                                    fields,
                                                                                    self.sqlv(kwargs['values'])))
-        print "query_str = ", query_str
+        #print "query_str = ", query_str
 
         return query_str
 
@@ -833,13 +869,13 @@ class DBManager:
         table = kwargs['table']                 #Имя таблицы
         updatefields = kwargs['updatefields']   #Поля которым необходимо присвоить значения
 
-        keyword = mq(kwargs['keyword']) #Ключевое слово для поиска
+        keyword = msj(kwargs['keyword']) #Ключевое слово для поиска
         keyfield = kwargs['keyfield'] #Поле таблицы по которому необходимо производить поиск
         values = kwargs['values']    #Новые значения
 
         setvalues_array = []
         for f, v in itertools.izip(updatefields, values):
-            setvalues_array.append("{0} = '{1}'".format(f, mq(v)))
+            setvalues_array.append("{0} = '{1}'".format(f, msj(v)))
         setvalues = ', '.join(setvalues_array)
 
         query_str = "UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, str(keyword))
@@ -862,7 +898,7 @@ class DBManager:
         #Задаем права доступа пользователя
 
         sqlsource = os.path.join(pool_name, "sql/init_fb2data.sql")
-        print sqlsource
+        #print sqlsource
 
         with open(sqlsource, 'r') as fquery:
             myquery = fquery.read()
@@ -882,7 +918,7 @@ class DBManager:
         #Задаем права доступа пользователя
 
         sqlsource = os.path.join(pool_name, "sql/init_genre_table.sql")
-        print sqlsource
+        #print sqlsource
 
         with open(sqlsource, 'r') as fquery:
             myquery = fquery.read()

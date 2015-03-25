@@ -10,6 +10,7 @@ print "cherrybased.py path = ", os.path.dirname(__file__) #Хорошо
 
 import cherrybase, cherrypy
 import argparse
+from kosfb2.modules.fb2tools import create_tmp_folder
 
 def parse_args ():
     result = argparse.ArgumentParser (description = 'CherryPy based server')
@@ -44,13 +45,7 @@ if __name__ == '__main__':
     if not debug and args.daemon:
         cherrypy.config ['daemon.on'] = True
 
-    #Удаляем сессии с прошлого запуска сервиса
-    sessionsfolder = os.path.join('kosfb2', 'sessions')
-    sessionsfiles = os.listdir(sessionsfolder)
-    print "sessionfiles: ", sessionsfiles
-    for file in sessionsfiles:
-        filepath = os.path.join(sessionsfolder, file)
-        print "filepath = ", filepath
-        os.remove(filepath)
+    #Создаем каталог для хранения файлов сессий если он еще не создан
+    create_tmp_folder('kosfb2', 'sessions')
 
     server.start ()

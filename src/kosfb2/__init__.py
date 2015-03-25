@@ -93,13 +93,12 @@ def get_applications (mode, basename):
     cherrypy.config.update(session_config)
     '''
 
+    #Активируем работу с сессиями
     cherrypy.config.update({'tools.sessions.on': True,
                         'tools.sessions.storage_type': "File",
                         'tools.sessions.storage_path': os.path.join('kosfb2', 'sessions'),
                         'tools.sessions.timeout': 10
                })
-
-
 
     db.auto_config(myapp.app.config, __package__, 'storage.db_', 'service')
 

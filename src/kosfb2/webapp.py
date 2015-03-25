@@ -11,7 +11,6 @@ import math
 import time
 #from cherrybase import db
 from kosfb2.modules import FileUploader, DBManager, FileParser
-import kosfb2.modules.fb2tools as fb2tools
 import functools
 
 print cherrypy.engine.state
@@ -48,27 +47,26 @@ class BookShelf(Base):
     def main(self):
         chs = cherrypy.session
 
-        print "############## MAIN ###############"
-        print "wasindex", chs.get('wasindex')
-        print "find_chkd", chs.get('find_chkd')
-        print "findkeyword", chs.get('findkeyword')
-        print "group_chkd", chs.get('group_chkd')
-        print "pagenumb", chs.get('pagenumb')
-        print "pagebookcount", chs.get('pagebookcount')
-        print "shortbooklist", chs.get('shortbooklist')
-        print "fullbooklist", chs.get('fullbooklist')
-        print "message", chs.get('message')
-
-        mainparams = {'find_chkd': chs.get('find_chkd'),
-                    'findkeyword': chs.get('findkeyword'),
-                    'group_chkd': chs.get('group_chkd'),
-                    'pagenumb' : chs.get('pagenumb'),
-                    'pagebookcount' : chs.get('pagebookcount'),
-                    'books' : chs.get('shortbooklist'),
-                    'message' : chs.get('message')
-                    }
-
         if chs.get('wasindex'):
+            print "############## MAIN ###############"
+            print "wasindex", chs.get('wasindex')
+            print "find_chkd", chs.get('find_chkd')
+            print "findkeyword", chs.get('findkeyword')
+            print "group_chkd", chs.get('group_chkd')
+            print "pagenumb", chs.get('pagenumb')
+            print "pagebookcount", chs.get('pagebookcount')
+            print "shortbooklist", chs.get('shortbooklist')
+            print "fullbooklist", chs.get('fullbooklist')
+            print "message", chs.get('message')
+
+            mainparams = {'find_chkd': chs.get('find_chkd'),
+                        'findkeyword': chs.get('findkeyword'),
+                        'group_chkd': chs.get('group_chkd'),
+                        'pagenumb' : chs.get('pagenumb'),
+                        'pagebookcount' : chs.get('pagebookcount'),
+                        'books' : chs.get('shortbooklist'),
+                        'message' : chs.get('message')
+                        }
 
             if chs.get('uploading'):
                 uploadparams = {'uploaderlog': chs.get('uploaderlog'),
@@ -108,18 +106,18 @@ class BookShelf(Base):
 
         #Пробуем обработать параметры группировки из WEB-формы
         try:
-            chs['grouptype'] = kwargs["grouptype"]
+            chs['grouptype'] = int(kwargs["grouptype"]) #SQL inj
             #self.init_grouptype(type = self.grouptype)
-        except KeyError:
+        except KeyError, ValueError:
             print "Error when get group parameters"
             self.init_grouptype()
 
         #Пробуем обработать параметры поиска из WEB-формы
         try:
-            chs['findtype'] = kwargs["findtype"]
-            chs['findkeyword'] = kwargs["findkeyword"]
+            chs['findtype'] = int(kwargs["findtype"]) #SQL inj
+            chs['findkeyword'] = str(kwargs["findkeyword"]) #SQL inj
             #self.init_findtype(type = self.findtype, text = self.findkeyword)
-        except KeyError:
+        except KeyError, ValueError:
             print "Error when get find parameters"
             self.init_findtype()
 
@@ -143,20 +141,20 @@ class BookShelf(Base):
 
         #Обновляем количество книг отображаемых на странице, если оно было изменено пользователем
         try:
-            pagebookcount = int(kwargs["pagebookcount"])
-        except KeyError:
+            pagebookcount = int(kwargs["pagebookcount"]) #SQL inj
+        except KeyError, ValueError:
             pagebookcount = self.defbookcount
 
         #Получаем информацию о переходе на другую страницу, если он был произведен пользователем
         try:
-            pgnavstep = kwargs["pgnavstep"]
-        except KeyError:
+            pgnavstep = int(kwargs["pgnavstep"]) #SQL inj
+        except KeyError, ValueError:
             pgnavstep = 0
 
         #Получаем текущий номер страницы
         try:
-            pagenumb = kwargs["pagenumb"]
-        except KeyError:
+            pagenumb = int(kwargs["pagenumb"]) - 1 #SQL inj
+        except KeyError, ValueError:
             pagenumb = 0
 
         #Получаем список книг для отображения на текущей странице
@@ -178,7 +176,7 @@ class BookShelf(Base):
         #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
         raise cherrypy.HTTPRedirect("/main")
 
-    #Добавление новых книг в библиотеку
+    #Добавление новых книг в библиотеку в фоне
     @cherrypy.expose
     def uploadbook(self, *args, **kwargs):
         chs = cherrypy.session
@@ -189,7 +187,7 @@ class BookShelf(Base):
 
 #        try:
 
-        uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
+        uploadfile = cherrypy.request.params.get('uploadfiles') #SQL inj #Можно использовать встроенный в cherrypy метод получения параметров
             #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
             #print "test uploadfile = ", uploadfile
 
@@ -212,7 +210,7 @@ class BookShelf(Base):
 #            chs['message'] = errmessage
 #            raise cherrypy.HTTPRedirect("/main")
 
-    #Добавление новых книг в библиотеку
+    #Первый вариант добавления новых книг в библиотеку
     @cherrypy.expose
     def uploadbook1(self, *args, **kwargs):
         chs = cherrypy.session
@@ -228,7 +226,7 @@ class BookShelf(Base):
                               staticfolder = os.path.join('kosfb2', '__static__'),
                               destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
-            fu.upload(upload = True, files = uploadfile)
+            fu.upload(upload = True, files = uploadfile) #SQL inj
             chs['message'] = u"Книги успешно загружены"
 #
         except AttributeError:
@@ -274,8 +272,10 @@ class BookShelf(Base):
             pagecount = 0
 
         #Получаем новый номер страницы на которую перешел пользователь
+        print "!! pgnavstep ", pgnavstep
+
         if pagecount > 0:
-            pagenumb = pagenumb + int(pgnavstep)
+            pagenumb = pagenumb + pgnavstep
             if pagenumb < 0:
                 pagenumb = 0
             elif pagenumb > pagecount - 1:
@@ -295,10 +295,12 @@ class BookShelf(Base):
 
         #Берем из результа поиска книги для отображения на текущей странице
         for i in xrange(start_pos, end_pos):
-            short_booklist.append(fullbooklist[i])
+            try:
+                short_booklist.append(fullbooklist[i])
+            except IndexError: #Если остался хвостик не кратный количеству книг выводимых на экране
+                pass
 
         return (pagenumb, short_booklist)
-
 
     #Добавление новых книг в библиотеку после ошибки
     @cherrypy.expose
@@ -326,17 +328,15 @@ class BookShelf(Base):
 
         fu.upload(parse = True, tmpfolder = tmpfolder)
 
-    #Инициализация базы данных fb2data
+    #Инициализация всех таблиц базы данных fb2data
     @cherrypy.expose
     def init_fb2_data (self):
-        #dbm = DBManager()
-        dbm.init_db()
         dbm.init_genre()
+        dbm.init_db()
 
     #Инициализация таблицы жанров
     @cherrypy.expose
     def init_genre_table (self):
-        #dbm = DBManager()
         dbm.init_genre()
 
     def init_findtype(self, type = 0, text = ''):
