@@ -758,9 +758,6 @@ class DBManager:
 
         print "Мета-данные и файлы книги удалены"
 
-
-
-
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -801,9 +798,7 @@ class DBManager:
     #Существует?
     @usedb
     def check_value_exist(self, db, table, field, value):
-        vv = msj(value)
-        print "vv ", vv
-        select_query = "SELECT count(*) from {0} WHERE {1} = {2};".format(table, field, vv)
+        select_query = "SELECT count(*) from {0} WHERE {1} = {2};".format(table, field, msj(value))
         print "select_query = ", select_query
         select_result = db.select_value(select_query)
 

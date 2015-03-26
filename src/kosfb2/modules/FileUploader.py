@@ -35,47 +35,43 @@ class FileUploader:
 
     def upload(self, *args, **kwargs):
 
-        time.sleep(5)
-        #Получаем имя уникального временного каталога для хранения подготовленных и рабранных файлов книг с обложками
-        #По данному разбору
-        #try:
-        #reupload = False
-        #refind = True
+        time.sleep(5) #Ждем пока все уляжется и начинаем процесс загрузки новых книг в фоне
 
         try:
             doupload = kwargs['doupload']
         except KeyError:
             doupload = False
-            try:
-                dofind = kwargs['dofind']
-                tmpfolder = kwargs['tmpfolder']
-                mainfolder = os.path.join(self.uploadfolder, tmpfolder)
-                heapfolder = os.path.join(mainfolder, 'heap')
-                fb2prepfolder = os.path.join(mainfolder, 'fb2prep')
-                fb2errfolder = os.path.join(mainfolder, 'fb2error')
-            except KeyError:
-                dofind = False
-                try:
-                    doparse = kwargs['doparse']
-                    tmpfolder = kwargs['tmpfolder']
-                    mainfolder = os.path.join(self.uploadfolder, tmpfolder)
-                    fb2prepfolder = os.path.join(mainfolder, 'fb2prep')
-                    fb2errfolder = os.path.join(mainfolder, 'fb2error')
-                except KeyError:
-                    doparse = False
+        try:
+            dofind = kwargs['dofind']
+            tmpfoldername = kwargs['tmpfoldername']
+        except KeyError:
+            dofind = False
+        try:
+            doparse = kwargs['doparse']
+            tmpfoldername = kwargs['tmpfoldername']
+        except KeyError:
+            doparse = False
+
+        try:
+
+            mainfolder = os.path.join(self.uploadfolder, tmpfoldername)
+            heapfolder = os.path.join(mainfolder, 'heap')
+            fb2prepfolder = os.path.join(mainfolder, 'fb2prep')
+            fb2errfolder = os.path.join(mainfolder, 'fb2error')
+        except KeyError:
+            raise
 
         if doupload:
             print "UPLOAD --------------------------------------------------------------------------"
 
             try:
-                uid = kwargs['uid']
+                tmpfoldername = kwargs['tmpfoldername']
                 print "Получен идентификатор загрузчика"
             except KeyError:
-                uid = str(uuid.uuid1())
+                tmpfoldername = str(uuid.uuid1())
 
-            tmpfolder = uid
             #Создаем временный каталог для работы с книгами
-            mainfolder = os.path.join(self.uploadfolder, tmpfolder)
+            mainfolder = os.path.join(self.uploadfolder, tmpfoldername)
             print "mainfolder = ", mainfolder
             #Если временный каталог для текущего разбора еще не был создан, создаем его
             if(not (os.path.exists(mainfolder))):
@@ -171,8 +167,6 @@ class FileUploader:
                 else:
                     print "Ошибка. Файл и метаданные не добавлены"
 
-
-
             print "################################################################################"
             print "Всего разобрано %s книг" % (fp.callcount,)
             print "Из них ошибочных %s" % (fp.errorcount,)
@@ -188,7 +182,7 @@ class FileUploader:
 
         #if Добавление файлов произошло успешно :
         #Удаляем временный каталог
-        rtf(tmpfolder)
+        rtf(mainfolder)
 
 
 '''

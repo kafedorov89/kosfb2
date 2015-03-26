@@ -307,26 +307,26 @@ class BookShelf(Base):
     def refindbook(self, *args, **kwargs):
         cherrypy.response.timeout = 3600
         print "cherrypy.response.timeout = ", cherrypy.response.timeout
-        tmpfolder = cherrypy.request.params.get('tmpfoldername') #Можно использовать встроенный в cherrypy метод получения параметров
+        tmpfoldername = cherrypy.request.params.get('tmpfoldername') #Можно использовать встроенный в cherrypy метод получения параметров
 
         fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
                           staticfolder = os.path.join('kosfb2', '__static__'),
                           destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
-        fu.upload(find = True, tmpfolder = tmpfolder)
+        fu.upload(find = True, tmpfoldername = tmpfoldername)
 
     #Добавление новых книг в библиотеку после ошибки
     @cherrypy.expose
     def reparsebook(self, *args, **kwargs):
         cherrypy.response.timeout = 3600
         print "cherrypy.response.timeout = ", cherrypy.response.timeout
-        tmpfolder = cherrypy.request.params.get('tmpfoldername') #Можно использовать встроенный в cherrypy метод получения параметров
+        tmpfoldername = cherrypy.request.params.get('tmpfoldername') #Можно использовать встроенный в cherrypy метод получения параметров
 
         fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
                           staticfolder = os.path.join('kosfb2', '__static__'),
                           destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
-        fu.upload(parse = True, tmpfolder = tmpfolder)
+        fu.upload(parse = True, tmpfoldername = tmpfoldername)
 
     #Инициализация всех таблиц базы данных fb2data
     @cherrypy.expose
