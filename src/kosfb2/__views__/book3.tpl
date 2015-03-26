@@ -99,7 +99,7 @@
 						{% if book['Title'] is not none%}
 							{{book['Title']}};<br>
 						{% else %}
-							Книга не имеет названия. Это печально<br>
+							--- <br>
 						{% endif %}
 					
 					<!-- Авторы -->
@@ -109,7 +109,7 @@
 								{{author}};
 							{% endfor %}<br>
 						{% else %}
-							Книга не имеет авторов. Это печально<br>
+							--- <br>
 						{% endif %}
 					
 					<!-- Жанры -->
@@ -119,18 +119,17 @@
 								{{genre}};
 							{% endfor %}<br>
 						{% else %}
-							Книга не относится ни к одному из жанров<br>
+							--- <br>
 						{% endif %}
 					
 					<!-- Серии -->
 						Серии: 
 						{% if book['Sequences'] is not none and book['Sequences']|length > 0 %}
-							{{book['Sequences']}};<br>
 							{% for sequence in book['Sequences'] %}
 								{{sequence}};
 							{% endfor %}<br>
 						{% else %}
-							Книга не входит ни в одну серию<br>
+							--- <br>
 						{% endif %}
 						
 					<!-- Издательские серии -->
@@ -138,9 +137,11 @@
 						
 						Издательские серии: 
 						{% if book['Sequences'] is not none and book['PubSequences']|length > 0 %}
-							{{book['PubSequences']}};<br>
+							{% for sequence in book['PubSequences'] %}
+								{{sequence}};
+							{% endfor %}<br>
 						{% else %}
-							Книга не входит ни в одну издательскую серию<br>
+							--- <br>
 						{% endif %}
 				</div>
 				

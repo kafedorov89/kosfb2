@@ -12,6 +12,7 @@ import functools
 import os
 import itertools
 from fb2tools import mask_sql_injection as msj
+from fb2tools import mask_sql_injection_approxi as msjp
 #from psycopg2.extensions import adapt
 import random
 from fb2tools import encodeUTF8str as es
@@ -20,6 +21,7 @@ from fb2tools import readaddspace as radd
 from fb2tools import fileremover as frem
 #import psycopg2.extensions as dbext
 import psycopg2
+from psycopg2.extensions import adapt
 
 #print random.sample([1, 2, 3, 4, 5, 6], 3)
 
@@ -523,8 +525,8 @@ class DBManager:
 
         #Если orderfield не передано или пусто то используем сортировку по алфавиту
         try:
-            randbook = kwargs['randbook'] #
-            count = kwargs['count']
+            randbook = bool(kwargs['randbook']) #
+            count = int(kwargs['count'])
         except KeyError:
             randbook = False
 
@@ -536,24 +538,24 @@ class DBManager:
         wherepubstring = " "
 
         try:
-            keyword = kwargs['keyword'] #Ключевое слово для поиска
-            findtype = kwargs['findtype'] #Тип поиска
+            keyword = es(ds(kwargs['keyword'])) #Ключевое слово для поиска
+            findtype = int(kwargs['findtype']) #Тип поиска
 
             if findtype == 0:
-                wheretitlestring = "WHERE B.title like '%{0}%'".format(keyword)
+                wheretitlestring = "WHERE B.title like {0}".format(msjp(keyword))
             elif findtype == 1:
-                whereauthorstring = "WHERE A.firstname like '%{0}%' OR A.lastname like '%{0}%' OR A.middlename like '%{0}%' OR A.nickname like '%{0}%'".format(keyword)
+                whereauthorstring = "WHERE A.firstname like {0} OR A.lastname like {0} OR A.middlename like {0} OR A.nickname like {0}".format(msjp(keyword))
             elif findtype == 2:
-                whereseqstring = "WHERE S.name like '%{0}%'".format(keyword)
+                whereseqstring = "WHERE S.name like {0}".format(msjp(keyword))
             elif findtype == 3:
-                wherepubseqstring = "WHERE PS.name like '%{0}%'".format(keyword)
+                wherepubseqstring = "WHERE PS.name like {0}".format(msjp(keyword))
         except KeyError:
             pass
 
         orderbysrting = " "
 
         try:
-            orderby = kwargs['orderby'] #Тип сортировки
+            orderby = int(kwargs['orderby']) #Тип сортировки
 
             if orderby == 0:
                 orderbysrting = "ORDER BY gname"
@@ -583,7 +585,7 @@ class DBManager:
 
         query = query.replace('ORDERBYSTRING', orderbysrting)
 
-        #print query
+        print query
 
         '''
         for line in content:
@@ -630,7 +632,7 @@ class DBManager:
 
                 book_dict['CoverFile'] = ds(book['coverfile'])
                 print "Обложка книги: ", book_dict['CoverFile']
-                book_dict['UID'] = ds(book['uid'])
+                book_dict['UID'] = book['uid']
                 print "UID книги: ", book_dict['UID']
                 book_dict['Title'] = ds(book['title'])
                 print "Название книги: ", book_dict['Title']
@@ -697,24 +699,26 @@ class DBManager:
     #Функция для получения полного названия серий с томом книги
     def sequence_parser(self, sequence, volume):
         sequences_array = []
-        try:
-            for i in xrange(len(sequence)):
-                pubsequence_fullname = ""
-                sequencename = ""
-                volumename = ""
+        #try:
+        for i in xrange(len(sequence)):
+            pubsequence_fullname = ""
+            sequencename = ""
+            volumename = ""
 
-                if sequence[i]:
-                    sequencename = ds(sequence[i])
-                    if volume[i]:
-                        volumename = ds(volume[i])
+            if sequence[i]:
+                sequencename = sequence[i]
 
-                        if(sequencename != "" and volumename != ""):
-                            sequence_fullname = "%s, Том: %s" % (sequencename, volumename)
+                if volume[i]:
+                    volumename = str(volume[i])
 
-                        sequences_array.append(sequence_fullname)
-            return sequences_array
-        except:
-            return []
+                    if(sequencename != "" and volumename != ""):
+                        connector = ", Том: "
+                        sequence_fullname = u"{0}{1}{2}".format(ds(es(sequencename)), ds(es(connector)), ds(es(volumename)))
+
+                    sequences_array.append(sequence_fullname)
+        return sequences_array
+        #except:
+        #    return []
 
     #Каскадное удаление записей о книге и файлов
     @usedb
@@ -768,27 +772,27 @@ class DBManager:
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     def sqlv(self, valuearray):
-        str_values = ["{0}".format(msj(str(val))) for val in valuearray]
-        #str_values = [str(val) for val in valuearray]
-        #print "str_values = ", str_values
-        return "{0}{1}{2}".format("'", "', '".join(str_values), "'")   #Конвертируем все значения в строки
+        str_values = [str(msj(val)) for val in valuearray]
+        return ", ".join(str_values)   #Конвертируем все значения в строки
 
     #Генератор SQL-запроса для поиска подстроки keyword в поле field в таблице table c необязательным упорядочиванием по orderfield
     def create_query_find_authors(self, *args, **kwargs):
-        lastname = kwargs['lastname']
-        firstname = kwargs['firstname']
-        middlename = kwargs['middlename']
-        nickname = kwargs['nickname']
+        lastname = msjp(kwargs['lastname'])
+        firstname = msjp(kwargs['firstname'])
+        middlename = msjp(kwargs['middlename'])
+        nickname = msjp(kwargs['nickname'])
 
-        query_str = "SELECT uid FROM author WHERE lastname LIKE '%{0}%' AND firstname LIKE '%{1}%' AND middlename LIKE '%{2}%' AND nickname LIKE '%{3}%'".format(msj(lastname), msj(firstname), msj(middlename), msj(nickname))
-        #print query_str
-        return query_str
+        select_query = "SELECT uid FROM author WHERE lastname LIKE {0} AND firstname LIKE {1} AND middlename LIKE {2} AND nickname LIKE {3}".format(lastname, firstname, middlename, nickname)
+        print "select_query = ", select_query
+
+        return select_query
 
     #Проверяем правильно ли была добавлена уже существующая книга
     #Правильно?
     @usedb
     def check_book_iscorrect(self, db, fb2id):
-        select_query = "SELECT iscorrect from book WHERE fb2id = '{0}';".format(msj(fb2id))
+        select_query = "SELECT iscorrect from book WHERE fb2id = {0};".format(msj(fb2id))
+        print "select_query = ", select_query
         select_result = db.select_value(select_query)
         #print select_result
         return bool(select_result)
@@ -797,8 +801,10 @@ class DBManager:
     #Существует?
     @usedb
     def check_value_exist(self, db, table, field, value):
-        select_query = "SELECT count(*) from {0} WHERE {1} = '{2}';".format(table, field, msj(value))
-        #print "select_query = ", select_query
+        vv = msj(value)
+        print "vv ", vv
+        select_query = "SELECT count(*) from {0} WHERE {1} = {2};".format(table, field, vv)
+        print "select_query = ", select_query
         select_result = db.select_value(select_query)
 
         #print "select_result = ", select_result
@@ -812,8 +818,8 @@ class DBManager:
     #Больше?
     @usedb
     def check_value_bigger(self, db, table, field, value, id_name, id_value):
-        select_query = "SELECT {0} from {1} WHERE {2} = '{3}';".format(field, table, id_name, msj(id_value))
-        #print "select_query = ", select_query
+        select_query = "SELECT {0} from {1} WHERE {2} = {3};".format(field, table, id_name, msj(id_value))
+        print "select_query = ", select_query
         select_result = db.select_value(select_query)
         #print "select_result = ", select_result
         if float(value) > float(select_result):
@@ -825,70 +831,80 @@ class DBManager:
     def create_query_find_rows(self, *args, **kwargs):
         #Если orderfield не передано или пусто то используем сортировку по алфавиту
 
-        keyword = msj(kwargs['keyword']) #Ключевое слово для поиска
+        try:
+            keyword = msjp(kwargs['keyword']) #Ключевое слово для поиска
+            showfields = kwargs['showfields'] #Поля таблицы которые нужно вывести в поиске
+            keyfield = kwargs['keyfield'] #Поле таблицы по которому необходимо производить поиск
+            table = kwargs['table'] #Имя таблицы в которой будет производиться поиск
+        except KeyError:
+            raise
 
-        showfields = ', '.join(kwargs['showfields']) #Поля таблицы которые нужно вывести в поиске
-        keyfield = kwargs['keyfield'] #Поле таблицы по которому необходимо производить поиск
-        table = kwargs['table'] #Имя таблицы в которой будет производиться поиск
+        showfields = ', '.join(showfields)
 
         try:
             orderfield = kwargs['orderfield']
-            orderfield = "ORDER BY {0}".format(orderfield)
+            orderfield = "ORDER BY {0}".format(msj(orderfield))
         except:
             orderfield = " "
 
-        query_str = "SELECT {0} FROM {1} WHERE {2} LIKE '%{3}%' {4};".format(showfields, table, keyfield, keyword, orderfield)
-        #print "query_str = ", query_str
+        select_query = "SELECT {0} FROM {1} WHERE {2} LIKE {3} {4};".format(showfields, table, keyfield, keyword, orderfield)
+        print "select_query = ", select_query
 
-        return query_str
+        return select_query
 
     #Генератор SQL-запроса для добавления одной строки с полями fields и значениями values  в таблицу table
     def create_query_delete_rows(self, *args, **kwargs):
-        table = kwargs['table']                 #Имя таблицы
-        field = kwargs['field']    #Поля которым необходимо присвоить значения
+        try:
+            table = kwargs['table']                 #Имя таблицы
+            field = kwargs['field']                 #Поля которым необходимо присвоить значения
+            values = self.sqlv(kwargs['values'])
+        except KeyError:
+            raise
 
-        query_str = "DELETE FROM {0} WHERE {1} IN ({2});".format(table, field, self.sqlv(kwargs['values']))
+        query_str = "DELETE FROM {0} WHERE {1} IN ({2});".format(table, field, values)
         #print "query_str = ", query_str
 
         return query_str
 
     #Генератор SQL-запроса для добавления одной строки с полями fields и значениями values  в таблицу table
     def create_query_insert_row(self, *args, **kwargs):
-        table = kwargs['table']                 #Имя таблицы
-        fields = ', '.join(kwargs['fields'])    #Поля которым необходимо присвоить значения
+        try:
+            table = kwargs['table']                 #Имя таблицы
+            fields = ', '.join(kwargs['fields'])    #Поля которым необходимо присвоить значения
+            values = self.sqlv(kwargs['values'])
+        except KeyError:
+            raise
 
-        query_str = str("INSERT INTO {0} ({1}) VALUES ({2}) RETURNING uid;".format(table,
-                                                                                   fields,
-                                                                                   self.sqlv(kwargs['values'])))
-        #print "query_str = ", query_str
+        select_query = str("INSERT INTO {0} ({1}) VALUES ({2}) RETURNING uid;".format(table,
+                                                                                      fields,
+                                                                                      values))
+        print "select_query = ", select_query
 
-        return query_str
+        return select_query
 
     #Генератор SQL-запроса для добавления одной строки с полcreate_query_delete_rowsями fields и значениями values  в таблицу table
     def create_query_update_row(self, *args, **kwargs):
-        table = kwargs['table']                 #Имя таблицы
-        updatefields = kwargs['updatefields']   #Поля которым необходимо присвоить значения
 
-        keyword = msj(kwargs['keyword']) #Ключевое слово для поиска
-        keyfield = kwargs['keyfield'] #Поле таблицы по которому необходимо производить поиск
-        values = kwargs['values']    #Новые значения
+        try:
+            table = kwargs['table']                 #Имя таблицы
+            updatefields = kwargs['updatefields']   #Поля которым необходимо присвоить значения
+            values = kwargs['values']    #Новые значения
+            keyfield = kwargs['keyfield'] #Поле таблицы по которому необходимо производить поиск
+            keyword = msj(kwargs['keyword']) #Ключевое слово для поиска
+        except KeyError:
+            raise
 
         setvalues_array = []
         for f, v in itertools.izip(updatefields, values):
-            setvalues_array.append("{0} = '{1}'".format(f, msj(v)))
+            setvalues_array.append("{0} = {1}".format(f, msj(v)))
+
         setvalues = ', '.join(setvalues_array)
 
-        query_str = "UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, str(keyword))
+        select_query = "UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, keyword)
 
-        '''
-        if type(keyword) == int:
-            query_str = adapt("UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, str(keyword)))
-        else:
-            query_str = adapt("UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, keyword))
-        print "query_str = ", query_str
-        '''
+        print "select_query = ", select_query
 
-        return query_str
+        return select_query
 
     #Создаем все таблицы для проекта kosfb2
     @usedb

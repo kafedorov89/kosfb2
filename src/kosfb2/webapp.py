@@ -106,7 +106,7 @@ class BookShelf(Base):
 
         #Пробуем обработать параметры группировки из WEB-формы
         try:
-            chs['grouptype'] = int(kwargs["grouptype"]) #SQL inj
+            chs['grouptype'] = kwargs["grouptype"] #SQL inj
             #self.init_grouptype(type = self.grouptype)
         except KeyError, ValueError:
             print "Error when get group parameters"
@@ -114,8 +114,8 @@ class BookShelf(Base):
 
         #Пробуем обработать параметры поиска из WEB-формы
         try:
-            chs['findtype'] = int(kwargs["findtype"]) #SQL inj
-            chs['findkeyword'] = str(kwargs["findkeyword"]) #SQL inj
+            chs['findtype'] = kwargs["findtype"] #SQL inj
+            chs['findkeyword'] = kwargs["findkeyword"] #SQL inj
             #self.init_findtype(type = self.findtype, text = self.findkeyword)
         except KeyError, ValueError:
             print "Error when get find parameters"
@@ -123,9 +123,9 @@ class BookShelf(Base):
 
         #Делаем запрос к БД и получаем список книг
         try:
-            chs['fullbooklist'] = dbm.find_books(keyword = chs.get('findkeyword').encode('utf-8', 'ignore'),
-                                                 findtype = int(chs.get('findtype')),
-                                                 orderby = int(chs.get('grouptype')))
+            chs['fullbooklist'] = dbm.find_books(keyword = chs.get('findkeyword'),
+                                                 findtype = chs.get('findtype'),
+                                                 orderby = chs.get('grouptype'))
             chs['message'] = u"Найдено книг: %s" % (len(chs['fullbooklist']))
             #print chs['fullbooklist']
         except: #ErrorFindBook

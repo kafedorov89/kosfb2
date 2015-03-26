@@ -8,6 +8,55 @@ import rarfile
 import zipfile
 import shutil
 import math
+import re
+from psycopg2.extensions import adapt
+
+#########################################################################################################################
+#Работа с кодировками
+
+#Обработчик декодирования неправильных символов
+def replace_error_handler(error):
+    print error
+    print error.start
+    print error.end
+    return (u'_' * (error.end - error.start), error.end)
+
+#Обработчик декодирования неправильных символов (то же самое в виде lambda функции)
+replace_spc_error_handler = lambda error: (u'_' * (error.end - error.start), error.end)
+
+#Добавляем обработчик ошибок кодирования в библиотеку codecs
+codecs.register_error("fb2_replacer", replace_error_handler)
+
+def decodeUTF8str(str):
+    try:
+        result = str.decode('utf-8', 'ignore')
+        #print "decodestr.ENCODED with utf-8"
+        return result
+    except UnicodeEncodeError, UnicodeDecodeError:
+        return str
+
+def encodeUTF8str(str):
+    try:
+        result = str.encode('utf-8', 'ignore')
+        #print "decodestr.ENCODED with utf-8"
+        return result
+    except UnicodeDecodeError, UnicodeEncodeError:
+        try:
+            enc_detect = chardet.detect(str)
+            #print enc_detect['confidence']
+            enc = enc_detect['encoding']
+            #print enc
+
+            try:
+                result = str.decode(enc).encode('utf-8')
+                #print "decodestr.DECODED"
+                return result
+            except UnicodeEncodeError, UnicodeDecodeError:
+                raise#print e
+        except UnicodeEncodeError, UnicodeDecodeError:
+            #result = str.decode('windows-1251', 'fb2_replacer')
+            #print "decodestr.CLEAR STR"
+            return str
 
 #Функция добавляет пробел перед строкой если она не пустая
 def readaddspace(string):
@@ -24,21 +73,97 @@ def readaddspace(string):
 #Набор функций против SQL-инъекций
 
 #Основная функция объединяющая все проверки из замены опасных символов и конструкций
-def mask_sql_injection(string):
+def mask_sql_injection(string, approxi = False, doadapt = True):
     if isinstance(string, str):
-        clear_string = mask_quotes(string)
-    return clear_string
+        clear_string = string
+        if approxi:
+            clear_string = "%{0}%".format(replace_err_simbols(clear_string))
+        else:
+            clear_string = replace_err_simbols(clear_string)
+
+        if doadapt:
+            return adapt(clear_string)
+        else:
+            return clear_string
+    else:
+        return string
+
+def mask_sql_injection_approxi(string):
+    return mask_sql_injection(string, approxi = True)
 
 #Маскируем кавычки для записи в БД
-def mask_quotes(string):
+def mask_sql_quotes(string):
     if isinstance(string, str):
-        return string.replace("\'", "\'\'")#.replace('"', '\\"')
+        return string.replace("\'", "\\'").replace('\"', '\\"')
     else:
-        return ''
+        return ""
+
+def replace_err_simbols(string, mode = 'sql'):
+
+    if isinstance(string, str):
+        clear_string = string
+
+        escape_dict = {'"': r'\"',
+                       "'": r"\'",
+                       "`": r"\`",
+                       "*": r"\*",
+                       "_": r"\_",
+                       "{": r"\{",
+                       "}": r"\}",
+                       "[": r"\[",
+                       "]": r"\]",
+                       "(": r"\(",
+                       ")": r"\)",
+                       ">": r"\>",
+                       "=": r"\=",
+                       "<": r"\<",
+                       "#": r"\#",
+                       "+": r"\+",
+                       "-": r"\-",
+                       ".": r"\.",
+                       "!": r"\!",
+                       "$": r"\$",
+                       "%": r"\%",
+                       "^": r"\^",
+                       ";": r"\;",
+                       "\\": r"\\\\"
+                       }
+
+
+        paranoic_dict = {"CREATE": "",
+                         "DROP": "",
+                         "SELECT": "",
+                         "UNION": "",
+                         "UPDATE":"",
+                         "INSERT":"",
+                         "LIKE":"",
+                         "WHERE":"",
+                         "TABLE": ""
+                         }
+
+        sql_dict = {"--": "",
+                    "_": "",
+                    ";": "",
+                    "%": "",
+                    "\\": r"\\"
+                    }
+
+        if mode == 'sql':
+            active_dict = sql_dict
+        elif mode == 'easy_string':
+            active_dict = escape_dict
+
+        for key, value in active_dict.iteritems():
+            clear_string = clear_string.replace(key, value)
+
+        clear_string = re.sub('\s+', ' ', clear_string).strip()
+        clear_string = re.sub('\s+', ' ', clear_string).strip()
+        return clear_string
+    else:
+        return ""
 
 ########################################################################################################################
-
-
+#Работа с каталогами файлами и архивами
 
 #Функция удаляет содержимое указанного каталога - folder
 def remove_all_from_folder(folder):
@@ -65,19 +190,6 @@ def create_tmp_folder(rootpath, foldername):
         os.mkdir(folderpath, 0777)
     print "{0}_folder  was created".format(foldername)
     return folderpath
-
-#Обработчик декодирования неправильных символов
-def replace_error_handler(error):
-    print error
-    print error.start
-    print error.end
-    return (u'_' * (error.end - error.start), error.end)
-
-#Обработчик декодирования неправильных символов (то же самое в виде lambda функции)
-replace_spc_error_handler = lambda error: (u'_' * (error.end - error.start), error.end)
-
-#Добавляем обработчик ошибок кодирования в библиотеку codecs
-codecs.register_error("fb2_replacer", replace_error_handler)
 
 def fileremover(file = None):
     if(os.path.exists(file)):
@@ -201,36 +313,3 @@ def safeextract(*args, **kwargs):
 def clearfilename(path):
     head, tail = ntpath.split(path)
     return tail or ntpath.basename(head)
-
-
-def decodeUTF8str(str):
-    try:
-        result = str.decode('utf-8', 'ignore')
-        #print "decodestr.ENCODED with utf-8"
-        return result
-    except:
-        return str
-
-def encodeUTF8str(str):
-    try:
-        result = str.encode('utf-8', 'ignore')
-        #print "decodestr.ENCODED with utf-8"
-        return result
-    except:
-        try:
-            enc_detect = chardet.detect(str)
-            #print enc_detect['confidence']
-            enc = enc_detect['encoding']
-            #print enc
-
-            try:
-                result = str.decode(enc).encode('utf-8')
-                #print "decodestr.DECODED"
-                return result
-            except UnicodeDecodeError, e:
-                #print e
-                pass
-        except:
-            #result = str.decode('windows-1251', 'fb2_replacer')
-            #print "decodestr.CLEAR STR"
-            return str
