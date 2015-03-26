@@ -32,7 +32,7 @@ def decodeUTF8str(str):
         result = str.decode('utf-8', 'ignore')
         #print "decodestr.ENCODED with utf-8"
         return result
-    except UnicodeEncodeError, UnicodeDecodeError:
+    except UnicodeEncodeError:
         return str
 
 def encodeUTF8str(str):
@@ -40,7 +40,7 @@ def encodeUTF8str(str):
         result = str.encode('utf-8', 'ignore')
         #print "decodestr.ENCODED with utf-8"
         return result
-    except UnicodeDecodeError, UnicodeEncodeError:
+    except UnicodeDecodeError:
         try:
             enc_detect = chardet.detect(str)
             #print enc_detect['confidence']
@@ -51,9 +51,9 @@ def encodeUTF8str(str):
                 result = str.decode(enc).encode('utf-8')
                 #print "decodestr.DECODED"
                 return result
-            except UnicodeEncodeError, UnicodeDecodeError:
-                raise#print e
-        except UnicodeEncodeError, UnicodeDecodeError:
+            except UnicodeEncodeError:
+                return str#print e
+        except UnicodeEncodeError:
             #result = str.decode('windows-1251', 'fb2_replacer')
             #print "decodestr.CLEAR STR"
             return str
