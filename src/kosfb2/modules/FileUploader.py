@@ -11,6 +11,7 @@ from kosfb2.modules import FileFinder, DBManager, FileParser
 from fb2tools import filesaver as fs
 from fb2tools import create_tmp_folder as ctf
 from fb2tools import remove_tmp_folder as rtf
+import logging
 
 dbm = DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
 
@@ -22,11 +23,13 @@ class ErrorFileUploader(Exception):
 
 class FileUploader:
     def __init__(self, *args, **kwargs):
-        #Указываем общий рабочий каталог для временного хранения временных каталогов для каждого разбора файлов
+        #Указываем общий рабочий каталог для временного хранения каталогов для каждого разбора файлов
         self.uploadfolder = kwargs['uploadfolder']
         self.staticfolder = kwargs['staticfolder']
         self.destfolder = kwargs['destfolder']
+        self.logger = kwargs['logger']
 
+        self.logger.info("UploaderStarted")
         print "uploadfolder = ", self.uploadfolder
 
         #Если общий каталог еще не был создан, создаем его
@@ -34,14 +37,14 @@ class FileUploader:
             os.mkdir(self.uploadfolder, 0777)
 
     def upload(self, *args, **kwargs):
-
         time.sleep(5) #Ждем пока все уляжется и начинаем процесс загрузки новых книг в фоне
+        mainfolder = ""
 
         try:
             tmpfoldername = kwargs['tmpfoldername']
+            mainfolder = os.path.join(self.uploadfolder, tmpfoldername)
         except KeyError:
             raise
-
         try:
             doupload = kwargs['doupload']
         except KeyError:
@@ -56,12 +59,11 @@ class FileUploader:
         except KeyError:
             doparse = False
 
-        try:
-            mainfolder = os.path.join(self.uploadfolder, tmpfoldername)
+        if mainfolder != "":
             heapfolder = os.path.join(mainfolder, 'heap')
             fb2prepfolder = os.path.join(mainfolder, 'fb2prep')
             fb2errfolder = os.path.join(mainfolder, 'fb2error')
-        except KeyError:
+        else:
             raise
 
         if doupload:
@@ -97,6 +99,7 @@ class FileUploader:
 
             #Создаем временный каталог для разобранных файлов fb2
             fb2errfolder = ctf(mainfolder, 'fb2error')
+
             #---------------------------------------------------------------------------------------------
 
             #Получаем ссылку на файлы полученные из WEB-формы

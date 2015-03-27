@@ -585,7 +585,7 @@ class DBManager:
 
         query = query.replace('ORDERBYSTRING', orderbysrting)
 
-        print query
+        #print query
 
         '''
         for line in content:
@@ -780,7 +780,7 @@ class DBManager:
         nickname = msjp(kwargs['nickname'])
 
         select_query = "SELECT uid FROM author WHERE lastname LIKE {0} AND firstname LIKE {1} AND middlename LIKE {2} AND nickname LIKE {3}".format(lastname, firstname, middlename, nickname)
-        print "select_query = ", select_query
+        #print "select_query = ", select_query
 
         return select_query
 
@@ -789,7 +789,7 @@ class DBManager:
     @usedb
     def check_book_iscorrect(self, db, fb2id):
         select_query = "SELECT iscorrect from book WHERE fb2id = {0};".format(msj(fb2id))
-        print "select_query = ", select_query
+        #print "select_query = ", select_query
         select_result = db.select_value(select_query)
         #print select_result
         return bool(select_result)
@@ -799,7 +799,7 @@ class DBManager:
     @usedb
     def check_value_exist(self, db, table, field, value):
         select_query = "SELECT count(*) from {0} WHERE {1} = {2};".format(table, field, msj(value))
-        print "select_query = ", select_query
+        #print "select_query = ", select_query
         select_result = db.select_value(select_query)
 
         #print "select_result = ", select_result
@@ -814,7 +814,7 @@ class DBManager:
     @usedb
     def check_value_bigger(self, db, table, field, value, id_name, id_value):
         select_query = "SELECT {0} from {1} WHERE {2} = {3};".format(field, table, id_name, msj(id_value))
-        print "select_query = ", select_query
+        #print "select_query = ", select_query
         select_result = db.select_value(select_query)
         #print "select_result = ", select_result
         if float(value) > float(select_result):
@@ -843,7 +843,7 @@ class DBManager:
             orderfield = " "
 
         select_query = "SELECT {0} FROM {1} WHERE {2} LIKE {3} {4};".format(showfields, table, keyfield, keyword, orderfield)
-        print "select_query = ", select_query
+        #print "select_query = ", select_query
 
         return select_query
 
@@ -873,7 +873,7 @@ class DBManager:
         select_query = str("INSERT INTO {0} ({1}) VALUES ({2}) RETURNING uid;".format(table,
                                                                                       fields,
                                                                                       values))
-        print "select_query = ", select_query
+        #print "select_query = ", select_query
 
         return select_query
 
@@ -897,7 +897,7 @@ class DBManager:
 
         select_query = "UPDATE {0} SET {1} WHERE {2} = {3};".format(table, setvalues, keyfield, keyword)
 
-        print "select_query = ", select_query
+        #print "select_query = ", select_query
 
         return select_query
 
@@ -913,7 +913,7 @@ class DBManager:
 
         with open(sqlsource, 'r') as fquery:
             myquery = fquery.read()
-            print "query_str = ", myquery
+            #print "query_str = ", myquery
 
         mycursor = db.cursor()
         myquery = myquery

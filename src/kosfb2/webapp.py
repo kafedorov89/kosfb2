@@ -12,6 +12,7 @@ import time
 #from cherrybase import db
 from kosfb2.modules import FileUploader, DBManager, FileParser
 import functools
+import logging
 
 print cherrypy.engine.state
 
@@ -23,6 +24,9 @@ print cherrypy.engine.state
 tq = cherrypy.engine.bg_tasks_queue
 dbm = DBManager(taskqueue = tq)
 
+logging.basicConfig(filename = 'webapp.log', level = logging.INFO)
+
+uploadlogger = logging.getLogger('kosfb2.modules.FileUploader')
 
 class Base(object):
 
@@ -199,7 +203,8 @@ class BookShelf(Base):
 
             fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
                               staticfolder = os.path.join('kosfb2', '__static__'),
-                              destfolder = os.path.join('kosfb2', '__static__', 'books'))
+                              destfolder = os.path.join('kosfb2', '__static__', 'books'),
+                              logger = uploadlogger)
 
             uploaderuid = str(uuid.uuid1())
             uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfoldername = uploaderuid)
