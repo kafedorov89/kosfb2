@@ -37,8 +37,7 @@ class Base(object):
 class BookShelf(Base):
 
     def __init__(self):
-        self.defbookcount = 20 #Кол-во книг отображаемых на странице
-
+        pass
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     #Основные методы
@@ -90,8 +89,8 @@ class BookShelf(Base):
         chs['find_chkd'], findtype, chs['findkeyword'] = self.init_findtype()
         chs['group_chkd'], groupetype = self.init_grouptype()
         chs['pagenumb'] = 0
-        chs['pagebookcount'] = self.defbookcount
-        chs['fullbooklist'] = self.randbook(self.defbookcount)
+        chs['pagebookcount'] = 20
+        chs['fullbooklist'] = self.randbook(20)
         chs['shortbooklist'] = []
         chs['message'] = u"Первый запуск"
 
@@ -103,78 +102,84 @@ class BookShelf(Base):
     @cherrypy.expose
     def findbook(self, *args, **kwargs):
         chs = cherrypy.session
+        if chs.get('wasindex'):
+            #Пробуем обработать параметры группировки из WEB-формы
+            try:
+                chs['grouptype'] = kwargs["grouptype"] #SQL inj
+                #self.init_grouptype(type = self.grouptype)
+            except (KeyError, ValueError):
+                print "Error when get group parameters"
+                self.init_grouptype()
 
-        #Пробуем обработать параметры группировки из WEB-формы
-        try:
-            chs['grouptype'] = kwargs["grouptype"] #SQL inj
-            #self.init_grouptype(type = self.grouptype)
-        except (KeyError, ValueError):
-            print "Error when get group parameters"
-            self.init_grouptype()
+            #Пробуем обработать параметры поиска из WEB-формы
+            try:
+                chs['findtype'] = kwargs["findtype"] #SQL inj
+                chs['findkeyword'] = kwargs["findkeyword"] #SQL inj
+                #self.init_findtype(type = self.findtype, text = self.findkeyword)
+            except (KeyError, ValueError):
+                print "Error when get find parameters"
+                self.init_findtype()
 
-        #Пробуем обработать параметры поиска из WEB-формы
-        try:
-            chs['findtype'] = kwargs["findtype"] #SQL inj
-            chs['findkeyword'] = kwargs["findkeyword"] #SQL inj
-            #self.init_findtype(type = self.findtype, text = self.findkeyword)
-        except (KeyError, ValueError):
-            print "Error when get find parameters"
-            self.init_findtype()
+            #Делаем запрос к БД и получаем список книг
+            try:
+                chs['fullbooklist'] = dbm.find_books(keyword = chs.get('findkeyword'),
+                                                     findtype = chs.get('findtype'),
+                                                     orderby = chs.get('grouptype'))
+                chs['message'] = u"Найдено книг: %s" % (len(chs['fullbooklist']))
+                #print chs['fullbooklist']
+            except: #ErrorFindBook
+                chs['fullbooklist'] = []
+                #chs['message'] = "По данным условиям поиска книги не найдены"
+                print "По данным условиям поиска книги не найдены"
 
-        #Делаем запрос к БД и получаем список книг
-        try:
-            chs['fullbooklist'] = dbm.find_books(keyword = chs.get('findkeyword'),
-                                                 findtype = chs.get('findtype'),
-                                                 orderby = chs.get('grouptype'))
-            chs['message'] = u"Найдено книг: %s" % (len(chs['fullbooklist']))
-            #print chs['fullbooklist']
-        except: #ErrorFindBook
-            chs['fullbooklist'] = []
-            #chs['message'] = "По данным условиям поиска книги не найдены"
-            print "По данным условиям поиска книги не найдены"
-
-        self.showbook()
+            self.showbook()
+        else:
+            raise cherrypy.HTTPRedirect("/index")
 
     @cherrypy.expose
     def showbook(self, *args, **kwargs):
         chs = cherrypy.session
 
-        #Обновляем количество книг отображаемых на странице, если оно было изменено пользователем
-        try:
-            pagebookcount = int(kwargs["pagebookcount"]) #SQL inj
-        except (KeyError, ValueError):
-            pagebookcount = self.defbookcount
+        if chs.get('wasindex'):
+            #Обновляем количество книг отображаемых на странице, если оно было изменено пользователем
+            try:
+                pagebookcount = int(kwargs["pagebookcount"]) #SQL inj
+                chs['pagebookcount'] = pagebookcount
+            except (KeyError, ValueError):
+                pagebookcount = chs['pagebookcount']
 
-        #Получаем информацию о переходе на другую страницу, если он был произведен пользователем
-        try:
-            pgnavstep = int(kwargs["pgnavstep"]) #SQL inj
-        except (KeyError, ValueError):
-            pgnavstep = 0
+            #Получаем информацию о переходе на другую страницу, если он был произведен пользователем
+            try:
+                pgnavstep = int(kwargs["pgnavstep"]) #SQL inj
+            except (KeyError, ValueError):
+                pgnavstep = 0
 
-        #Получаем текущий номер страницы
-        try:
-            pagenumb = int(kwargs["pagenumb"]) - 1 #SQL inj
-        except (KeyError, ValueError):
-            pagenumb = 0
+            #Получаем текущий номер страницы
+            try:
+                pagenumb = int(kwargs["pagenumb"]) - 1 #SQL inj
+            except (KeyError, ValueError):
+                pagenumb = chs['pagenumb']
 
-        #Получаем список книг для отображения на текущей странице
-#        try:
-        chs['pagenumb'] = 0
-        chs['shortbooklist'] = []
+            #Получаем список книг для отображения на текущей странице
+#            try:
+            chs['pagenumb'] = 0
+            chs['shortbooklist'] = []
 
-        chs['pagenumb'], chs['shortbooklist'] = self.get_page_booklist(fullbooklist = chs.get('fullbooklist'),
-                                                                       pagebookcount = pagebookcount,
-                                                                       pagenumb = pagenumb,
-                                                                       pgnavstep = pgnavstep)
-#            print chs['shortbooklist']
-#            chs['message'] = u"Книги найдены"
-#        except: #ErrorGetShortBookList
-#            chs['pagenumb'] = 0
-#            chs['shortbooklist'] = []
-#            chs['message'] = u"По данным условиям поиска книги не найдены"
+            chs['pagenumb'], chs['shortbooklist'] = self.get_page_booklist(fullbooklist = chs.get('fullbooklist'),
+                                                                           pagebookcount = pagebookcount,
+                                                                           pagenumb = pagenumb,
+                                                                           pgnavstep = pgnavstep)
+    #            print chs['shortbooklist']
+    #            chs['message'] = u"Книги найдены"
+    #        except: #ErrorGetShortBookList
+    #            chs['pagenumb'] = 0
+    #            chs['shortbooklist'] = []
+    #            chs['message'] = u"По данным условиям поиска книги не найдены"
 
-        #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
-        raise cherrypy.HTTPRedirect("/main")
+            #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
+            raise cherrypy.HTTPRedirect("/main")
+        else:
+            raise cherrypy.HTTPRedirect("/index")
 
     #Добавление новых книг в библиотеку в фоне
     @cherrypy.expose
@@ -182,33 +187,36 @@ class BookShelf(Base):
         chs = cherrypy.session
         #errmessage = u"Книги не загружены. Что-то приключилось"
 
-        cherrypy.response.timeout = 3600
-        print "cherrypy.response.timeout = ", cherrypy.response.timeout
+        if chs.get('wasindex'):
+            cherrypy.response.timeout = 3600
+            print "cherrypy.response.timeout = ", cherrypy.response.timeout
 
-#        try:
+    #        try:
 
-        uploadfile = cherrypy.request.params.get('uploadfiles') #SQL inj #Можно использовать встроенный в cherrypy метод получения параметров
-            #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
-            #print "test uploadfile = ", uploadfile
+            uploadfile = cherrypy.request.params.get('uploadfiles') #SQL inj #Можно использовать встроенный в cherrypy метод получения параметров
+                #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
+                #print "test uploadfile = ", uploadfile
 
-        fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
-                          staticfolder = os.path.join('kosfb2', '__static__'),
-                          destfolder = os.path.join('kosfb2', '__static__', 'books'))
+            fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
+                              staticfolder = os.path.join('kosfb2', '__static__'),
+                              destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
-        uploaderuid = str(uuid.uuid1())
-        uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfoldername = uploaderuid)
-        tq.put(uploader)
+            uploaderuid = str(uuid.uuid1())
+            uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfoldername = uploaderuid)
+            tq.put(uploader)
 
-        #chs['uploaderlog'] = os.path.join('kosfb2', '__static__', 'books', "%s.log" % (uploaderuid))
-        chs['uploading'] = True
-        raise cherrypy.HTTPRedirect("/main")
+            #chs['uploaderlog'] = os.path.join('kosfb2', '__static__', 'books', "%s.log" % (uploaderuid))
+            chs['uploading'] = True
+            raise cherrypy.HTTPRedirect("/main")
 
-#        except AttributeError:
-#            chs['message'] = errmessage
-#            raise cherrypy.HTTPRedirect("/main")
-#        except KeyError:
-#            chs['message'] = errmessage
-#            raise cherrypy.HTTPRedirect("/main")
+    #        except AttributeError:
+    #            chs['message'] = errmessage
+    #            raise cherrypy.HTTPRedirect("/main")
+    #        except KeyError:
+    #            chs['message'] = errmessage
+    #            raise cherrypy.HTTPRedirect("/main")
+        else:
+            raise cherrypy.HTTPRedirect("/index")
 
     #Первый вариант добавления новых книг в библиотеку
     @cherrypy.expose
@@ -248,7 +256,7 @@ class BookShelf(Base):
         try:
             count = kwargs['count']
         except KeyError:
-            count = self.defbookcount
+            count = 20
 
         return dbm.find_books(randbook = True, count = count)
 
@@ -267,7 +275,13 @@ class BookShelf(Base):
         #Вычисляем кол-во страниц, необходимое для отображения результатов поиска
         #pagebookcount - задается пользователем через web-форму
         if pagebookcount > 0:
-            pagecount = int(math.ceil(len(fullbooklist) / pagebookcount))
+            '''
+            lenfullbooklist = len(fullbooklist)
+            quotient = float(lenfullbooklist) / float(pagebookcount)
+            roundedres = math.ceil(quotient)
+            pagecount = int(roundedres)
+            '''
+            pagecount = int(math.ceil(float(len(fullbooklist)) / float(pagebookcount)))
         else:
             pagecount = 0
 
