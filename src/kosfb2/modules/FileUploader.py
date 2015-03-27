@@ -38,22 +38,25 @@ class FileUploader:
         time.sleep(5) #Ждем пока все уляжется и начинаем процесс загрузки новых книг в фоне
 
         try:
+            tmpfoldername = kwargs['tmpfoldername']
+        except KeyError:
+            raise
+
+        try:
             doupload = kwargs['doupload']
         except KeyError:
             doupload = False
         try:
             dofind = kwargs['dofind']
-            tmpfoldername = kwargs['tmpfoldername']
         except KeyError:
             dofind = False
         try:
             doparse = kwargs['doparse']
-            tmpfoldername = kwargs['tmpfoldername']
+
         except KeyError:
             doparse = False
 
         try:
-
             mainfolder = os.path.join(self.uploadfolder, tmpfoldername)
             heapfolder = os.path.join(mainfolder, 'heap')
             fb2prepfolder = os.path.join(mainfolder, 'fb2prep')

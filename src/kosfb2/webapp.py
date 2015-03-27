@@ -196,7 +196,7 @@ class BookShelf(Base):
                           destfolder = os.path.join('kosfb2', '__static__', 'books'))
 
         uploaderuid = str(uuid.uuid1())
-        uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfolder = uploaderuid)
+        uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfoldername = uploaderuid)
         tq.put(uploader)
 
         #chs['uploaderlog'] = os.path.join('kosfb2', '__static__', 'books', "%s.log" % (uploaderuid))
