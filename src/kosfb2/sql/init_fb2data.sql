@@ -161,6 +161,7 @@ CREATE TABLE publisher (
 
 CREATE UNIQUE INDEX bookuid_idx ON book (uid);
 
+DROP TYPE IF EXISTS fullauthorname;
 CREATE TYPE fullauthorname AS (
   lastname      text
  ,firstname     text
@@ -168,6 +169,7 @@ CREATE TYPE fullauthorname AS (
  ,nickname      text
  );
 
+DROP TYPE IF EXISTS fullseqname;
 CREATE TYPE fullseqname AS (
   sname      text
  ,svolume    text

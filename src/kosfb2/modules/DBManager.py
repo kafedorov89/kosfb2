@@ -574,7 +574,7 @@ class DBManager:
         with open(sqlsource, 'r') as fquery:
             query = fquery.read()
 
-        print type(query)
+        #print type(query)
 
         query = query.replace('WHERETITLESTRING', wheretitlestring)
         query = query.replace('WHEREAUTHORSTRING', whereauthorstring)

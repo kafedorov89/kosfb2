@@ -108,7 +108,7 @@ class BookShelf(Base):
         try:
             chs['grouptype'] = kwargs["grouptype"] #SQL inj
             #self.init_grouptype(type = self.grouptype)
-        except KeyError, ValueError:
+        except (KeyError, ValueError):
             print "Error when get group parameters"
             self.init_grouptype()
 
@@ -117,7 +117,7 @@ class BookShelf(Base):
             chs['findtype'] = kwargs["findtype"] #SQL inj
             chs['findkeyword'] = kwargs["findkeyword"] #SQL inj
             #self.init_findtype(type = self.findtype, text = self.findkeyword)
-        except KeyError, ValueError:
+        except (KeyError, ValueError):
             print "Error when get find parameters"
             self.init_findtype()
 
@@ -142,19 +142,19 @@ class BookShelf(Base):
         #Обновляем количество книг отображаемых на странице, если оно было изменено пользователем
         try:
             pagebookcount = int(kwargs["pagebookcount"]) #SQL inj
-        except KeyError, ValueError:
+        except (KeyError, ValueError):
             pagebookcount = self.defbookcount
 
         #Получаем информацию о переходе на другую страницу, если он был произведен пользователем
         try:
             pgnavstep = int(kwargs["pgnavstep"]) #SQL inj
-        except KeyError, ValueError:
+        except (KeyError, ValueError):
             pgnavstep = 0
 
         #Получаем текущий номер страницы
         try:
             pagenumb = int(kwargs["pagenumb"]) - 1 #SQL inj
-        except KeyError, ValueError:
+        except (KeyError, ValueError):
             pagenumb = 0
 
         #Получаем список книг для отображения на текущей странице

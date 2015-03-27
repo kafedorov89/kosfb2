@@ -410,7 +410,7 @@ class FileParser:
             #try:
             with zipfile.ZipFile(archfile, 'w') as myzip:
 
-                myzip.write(filepath, zipfilename, zipfile.ZIP_DEFLATED)
+                myzip.write(filepath, bookfilename, zipfile.ZIP_DEFLATED)
                 myzip.close()
 
                 Book["ZipFile"] = os.path.join("books", zipfilename)
