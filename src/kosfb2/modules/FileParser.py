@@ -13,8 +13,10 @@ from fb2tools import encodeUTF8str as es
 import functools
 import re
 import time
-
+import logging
 #import DBManager
+print __name__
+
 root = __name__.partition('.')[0]
 print "root = ", root
 #Тестовая функция для вывода полученных метаданных по книге
@@ -28,6 +30,8 @@ class FileParser:
         self.fb2errfolder = args[3]
         self.callcount = 0
         self.errorcount = 0
+        self.loggername = kwargs['loggername']
+        self.logger = logging.getLogger(self.loggername)
         #print "foldername = ", self.fb2prepfolder
 
     def show_book_info(self, Book):
@@ -39,6 +43,7 @@ class FileParser:
 
     #Парсер для одной итерации. Разбирает передаваемый ему filename и возвращает словарь Book с метаданными
     def one_book_parser(self, filepath):
+
         print "Разбираются мета-данные файла: ", filepath
         time.sleep(0.1)
         err = functools.partial(self.errplus1, filepath)

@@ -22,6 +22,7 @@ from fb2tools import fileremover as frem
 #import psycopg2.extensions as dbext
 import psycopg2
 from psycopg2.extensions import adapt
+import logging
 
 #print random.sample([1, 2, 3, 4, 5, 6], 3)
 
@@ -39,8 +40,12 @@ class DBManager:
             self.taskqueue = kwargs['taskqueue']
         except:
             pass
+
         self.readylist = {}
         self.result = {}
+
+        self.loggername = kwargs['loggername']
+        self.logger = logging.getLogger(self.loggername)
         #self.result = []
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -154,6 +159,7 @@ class DBManager:
 
     #Запись информации по одной книге
     def add_book(self, Book):
+
         newer_version = False
         exists = False
         iscorrect = False

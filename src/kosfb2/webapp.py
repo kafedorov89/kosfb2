@@ -24,10 +24,6 @@ print cherrypy.engine.state
 tq = cherrypy.engine.bg_tasks_queue
 dbm = DBManager(taskqueue = tq)
 
-logging.basicConfig(filename = 'webapp.log', level = logging.INFO)
-
-uploadlogger = logging.getLogger('kosfb2.modules.FileUploader')
-
 class Base(object):
 
     #Задаем место расположения файлов tpl для jinja2
@@ -203,10 +199,18 @@ class BookShelf(Base):
 
             fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
                               staticfolder = os.path.join('kosfb2', '__static__'),
-                              destfolder = os.path.join('kosfb2', '__static__', 'books'),
-                              logger = uploadlogger)
+                              destfolder = os.path.join('kosfb2', '__static__', 'books'))
+
+
 
             uploaderuid = str(uuid.uuid1())
+
+            oneuploadhnd = logging.FileHandler(os.path.join("kosfb2", "__static__", "uploadlogs", "".join((uploaderuid, ".log"))))
+            oneuploadhnd.setLevel(logging.INFO)
+            oneuploadlogger = logging.getLogger("".join(('upload_', uploaderuid)))
+            oneuploadlogger.addHandler(oneuploadhnd)
+            oneuploadlogger.setLevel(logging.DEBUG)
+
             uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfoldername = uploaderuid)
             tq.put(uploader)
 
