@@ -70,7 +70,6 @@ def get_applications (mode, basename):
             {'tools.staticdir.on' : True,
              'tools.staticdir.dir' : 'covers'}
     }
-
     myapp.app.config.update(static_config)
 
     #Дополняем конфиг приложения описанием кодировок
@@ -79,6 +78,7 @@ def get_applications (mode, basename):
                        'tools.decode.on': True }
     myapp.app.config.update(encoding_config)
 
+
     #print "myapp.app.config = ", myapp.app.config
 
     #Конфигурируем cherrybase так чтобы он работал с БД
@@ -86,12 +86,6 @@ def get_applications (mode, basename):
     #__package__ - Называем пул соединений к БД по имени пакета (Может быть соверщенно любое имя)
     #'storage.db_' - Префикс по которому будет производится поиск параметров в конфиг файле
     #'service' - Имя раздела в конфиге которое вишется в квадратных скобках [<имя раздела>] (Если его не написать, то в конфиге ничего не найдется)
-
-    '''
-    session_config = {'tools.sessions.on': True,
-                      'tools.sessions.storage_type' : "memcached"}
-    cherrypy.config.update(session_config)
-    '''
 
     #Активируем работу с сессиями
     cherrypy.config.update({'tools.sessions.on': True,
