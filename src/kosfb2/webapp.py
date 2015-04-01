@@ -1,28 +1,27 @@
 # -*- coding: utf-8 -*-
-#import pkg_resources
+
+
+
 import cherrypy
-#import cgi
-#import tempfile
-#import cherrybase
 import uuid
 import jinja2
 import os
 import math
 import time
-#from cherrybase import db
-from kosfb2.modules import FileUploader, DBManager, FileParser
 import functools
 import logging
+import simplejson
+import codecs
+import kosfb2
+from kosfb2.modules import FileUploader, DBManager, FileParser
+
+
 
 print cherrypy.engine.state
 
-#Перенесено в DBManager
-#pool_name = __package__
-#usedb = db.use_db(pool_name)
-
-#dbm = DBManager.DBManager(taskqueue = cherrypy.engine.bg_tasks_queue)
 tq = cherrypy.engine.bg_tasks_queue
 dbm = DBManager(taskqueue = tq)
+
 
 class Base(object):
 
@@ -34,6 +33,7 @@ class Base(object):
     def __init__ (self):
         cherrypy.tools.jinja.env.filters ['dt'] = lambda value, format = '%d.%m.%Y %H:%M:%S': value.strftime (format) #@UndefinedVariable
 
+
 class BookShelf(Base):
 
     def __init__(self):
@@ -42,7 +42,7 @@ class BookShelf(Base):
 
     #Основные методы
     @cherrypy.expose
-    @cherrypy.tools.jinja (template = 'book3.tpl')
+    @cherrypy.tools.jinja (template = 'book.tpl')
     def main(self):
         chs = cherrypy.session
 
@@ -80,8 +80,27 @@ class BookShelf(Base):
 
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
+    #
     @cherrypy.expose
-    @cherrypy.tools.jinja (template = 'book3.tpl')
+    def viewuploadlog(self):
+        with open(os.path.join('kosfb2', '__views__', 'viewuploadlog.html')) as htmlfile:
+            htmltext = htmlfile.read()
+        return htmltext
+
+    @cherrypy.expose
+    def getlog(self, tmpname):
+        cherrypy.response.headers['Content-Type'] = 'application/json'
+        u_tmpname = tmpname.encode("utf-8", "ignore")
+        print u_tmpname
+
+        with open(os.path.join('kosfb2', '__static__', 'logfiles', u_tmpname)) as logfile:
+            logtext = logfile.read()
+        return simplejson.dumps(dict(uploadinglogtext = logtext, disablerefresh = False))
+
+    #----------------------------------------------------------------------------------------------------------------------------------------------------
+    #Main page (Основная страница)
+    @cherrypy.expose
+    @cherrypy.tools.jinja (template = 'book.tpl')
     def index(self):
         chs = cherrypy.session
 
@@ -99,6 +118,7 @@ class BookShelf(Base):
         #cherrypy.response.cookie['user_name'] = 'TurboGears User' #Пишем cookies. Пример
         #raise cherrypy.HTTPRedirect("/main")
 
+    #Обработчик поисковых параметров
     @cherrypy.expose
     def findbook(self, *args, **kwargs):
         chs = cherrypy.session
@@ -136,6 +156,7 @@ class BookShelf(Base):
         else:
             raise cherrypy.HTTPRedirect("/index")
 
+    #Обработчик отображения нужных книг для выбранной страницы (выборка из всех найденных)
     @cherrypy.expose
     def showbook(self, *args, **kwargs):
         chs = cherrypy.session
@@ -161,20 +182,20 @@ class BookShelf(Base):
                 pagenumb = chs['pagenumb']
 
             #Получаем список книг для отображения на текущей странице
-#            try:
-            chs['pagenumb'] = 0
-            chs['shortbooklist'] = []
+            try:
+                chs['pagenumb'] = 0
+                chs['shortbooklist'] = []
 
-            chs['pagenumb'], chs['shortbooklist'] = self.get_page_booklist(fullbooklist = chs.get('fullbooklist'),
+                chs['pagenumb'], chs['shortbooklist'] = self.get_page_booklist(fullbooklist = chs.get('fullbooklist'),
                                                                            pagebookcount = pagebookcount,
                                                                            pagenumb = pagenumb,
                                                                            pgnavstep = pgnavstep)
-    #            print chs['shortbooklist']
-    #            chs['message'] = u"Книги найдены"
-    #        except: #ErrorGetShortBookList
-    #            chs['pagenumb'] = 0
-    #            chs['shortbooklist'] = []
-    #            chs['message'] = u"По данным условиям поиска книги не найдены"
+                print chs['shortbooklist']
+                chs['message'] = u"Книги найдены"
+            except: #ErrorGetShortBookList
+                chs['pagenumb'] = 0
+                chs['shortbooklist'] = []
+                chs['message'] = u"По данным условиям поиска книги не найдены"
 
             #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
             raise cherrypy.HTTPRedirect("/main")

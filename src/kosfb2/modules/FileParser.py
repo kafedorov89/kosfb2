@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-# kosfb2.fb2parse
-# book's tags for finding: genre lang first-name last-name book-title binary(jpg)
-#import xml.etree.ElementTree as ET
+
+
 
 import lxml.etree as LX
 import base64
@@ -14,8 +13,8 @@ import functools
 import re
 import time
 import logging
-#import DBManager
-print __name__
+
+
 
 root = __name__.partition('.')[0]
 print "root = ", root
@@ -30,9 +29,9 @@ class FileParser:
         self.fb2errfolder = args[3]
         self.callcount = 0
         self.errorcount = 0
+
         self.loggername = kwargs['loggername']
         self.logger = logging.getLogger(self.loggername)
-        #print "foldername = ", self.fb2prepfolder
 
     def show_book_info(self, Book):
         print Book

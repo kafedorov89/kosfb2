@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+	<head>
+		<title>AJAX with jQuery and cherrypy</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<script type="text/javascript" src="/media/jquery-1.4.2.min.js"></script>
+        <script type="text/javascript">
+	        var disablerefresh = false;
+	        var refreshIntervalId;
+			var filename = "uploading.log"
+	        
+	        
+	        function startloading(){
+	        	setInterval(loadlog, 1000); //refreshIntervalId = 
+	        }
+	        
+	        function loadlog(){
+	        	// When the testform is submitted...
+				// post the form values via AJAX...
+				$.post('/showlog', {"tmpname": $("#tmpname").html()}, function(data){
+					// and set the title with the result
+					$("#uploadinglogtext").html(data['uploadinglogtext']);
+					disablerefresh = data['disablerefresh'];
+					});
+				
+	        	//if (disablerefresh == true) {
+	  			//	clearInterval(refreshIntervalId);
+	        	//}
+	        }
+       	</script>	
+</head>
+	<div id="tmpname">uploading.log</div>
+	<body onload = "startloading()">
+		<h1 id="title">Лог файл</h1>
+	    <div id="uploadinglogtext">Здесь будет лог</div>
+	</body>
+</html>

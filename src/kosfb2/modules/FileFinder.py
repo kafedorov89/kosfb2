@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+
+
+
 import uuid
 import os
 import shutil
@@ -7,6 +10,9 @@ import rarfile
 import platform
 import fb2tools
 import time
+import logging
+
+
 
 class FileFinder(object):
     def __init__(self, *args, **kwargs):
@@ -16,6 +22,8 @@ class FileFinder(object):
         self.fb2folder = os.path.join(self.mainfolder, 'fb2')
         self.archnumb = 0
         #self.wasfound = False
+        self.loggername = kwargs['loggername']
+        self.logger = logging.getLogger(self.loggername)
 
     def find(self, *args, **kwargs):
         time.sleep(0.1)

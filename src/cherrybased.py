@@ -1,16 +1,15 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
+
 import os, sys
-
-sys.path.append (os.path.dirname(__file__))
-
-#print os.getcwd() #Плохо
-print "cherrybased.py path = ", os.path.dirname(__file__) #Хорошо
-
 import cherrybase, cherrypy
 import argparse
 from kosfb2.modules.fb2tools import create_tmp_folder
+
+
+
+sys.path.append (os.path.dirname(__file__))
 
 def parse_args ():
     result = argparse.ArgumentParser (description = 'CherryPy based server')

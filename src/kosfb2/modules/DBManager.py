@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
 
-#import psycopg2
-#import cherrypy
-#import cherrybase
-#from cherrybase import *
-#from cherrybase import plugins
 from cherrybase import db #Нужно ли импортировать db чтобы работать с @cherrybase.db.use_db?
 import uuid
 import time
@@ -13,13 +8,11 @@ import os
 import itertools
 from fb2tools import mask_sql_injection as msj
 from fb2tools import mask_sql_injection_approxi as msjp
-#from psycopg2.extensions import adapt
 import random
 from fb2tools import encodeUTF8str as es
 from fb2tools import decodeUTF8str as ds
 from fb2tools import readaddspace as radd
 from fb2tools import fileremover as frem
-#import psycopg2.extensions as dbext
 import psycopg2
 from psycopg2.extensions import adapt
 import logging
@@ -46,6 +39,7 @@ class DBManager:
 
         self.loggername = kwargs['loggername']
         self.logger = logging.getLogger(self.loggername)
+
         #self.result = []
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
