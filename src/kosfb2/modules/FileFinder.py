@@ -16,14 +16,19 @@ import logging
 
 class FileFinder(object):
     def __init__(self, *args, **kwargs):
+        try:
+            self.mainfolder = args[0]
+            self.loggername = kwargs['loggername']
+        except (KeyError, ValueError):
+            raise
+
         self.filecount = 0
-        self.mainfolder = args[0]
         self.heapfolder = os.path.join(self.mainfolder, 'heap')
         self.fb2folder = os.path.join(self.mainfolder, 'fb2')
         self.archnumb = 0
-        #self.wasfound = False
-        self.loggername = kwargs['loggername']
+
         self.logger = logging.getLogger(self.loggername)
+
 
     def find(self, *args, **kwargs):
         time.sleep(0.1)

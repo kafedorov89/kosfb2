@@ -31,15 +31,13 @@ class DBManager:
     def __init__(self, *args, **kwargs):
         try:
             self.taskqueue = kwargs['taskqueue']
-        except:
-            pass
+        except KeyError, ValueError:
+            raise
 
         self.readylist = {}
         self.result = {}
 
-        self.loggername = kwargs['loggername']
-        self.logger = logging.getLogger(self.loggername)
-
+        #self.logger = logging.getLogger(self.loggername)
         #self.result = []
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -152,7 +150,8 @@ class DBManager:
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
     #Запись информации по одной книге
-    def add_book(self, Book):
+    def add_book(self, Book, loggername):
+        logger = logging.getLogger(loggername)
 
         newer_version = False
         exists = False
@@ -175,18 +174,22 @@ class DBManager:
         if(self.check_value_exist('book', 'fb2id', Book["ID"])):
             exists = True
             print "Запись в БД уже существует"
+            logger.info("Запись в БД уже существует")
             #Проверь верcию книги, если книга уже есть в БД
             if(self.check_value_bigger('book', 'version', Book["Version"], 'fb2id', Book["ID"])):
                 print "Добавляемая книга имеет более новую версию"
+                logger.info("Добавляемая книга имеет более новую версию")
                 newer_version = True
                 self.delete_book(Book['ID'])
             else:
                 print "Добавляемая книга имеет такую же версию или более раннюю"
+                logger.info("Добавляемая книга имеет такую же версию или более раннюю")
                 newer_version = False
                 iscorrect = self.check_book_iscorrect(Book["ID"])
                 if (not iscorrect):
                     #Удаляем существующую запись о книге из БД из всех связных таблиц
                     print "Ошибка. Запись в БД по книге не корректна. Будет удален файл и мета-данные"
+                    logger.info("Ошибка. Запись в БД по книге не корректна. Будет удален файл и мета-данные")
                     self.delete_book(Book['ID'])
                     exists = False
         else:
@@ -257,7 +260,6 @@ class DBManager:
             except KeyError:
                 print "Ошибка. Не удалось добавить новую запись в таблицу book"
                 return False
-
 
             #Пробуем получить описание книги
             try:
@@ -461,19 +463,19 @@ class DBManager:
                     try:
                         last = author['LastName']
                     except:
-                        last = ''
+                        last = ""
                     try:
                         first = author['FirstName']
                     except:
-                        first = ''
+                        first = ""
                     try:
                         middle = author['MiddleName']
                     except:
-                        middle = ''
+                        middle = ""
                     try:
                         nick = author['NickName']
                     except:
-                        nick = ''
+                        nick = ""
 
                     author_uid = et(self.create_query_find_authors(lastname = last, firstname = first, middlename = middle, nickname = nick))
 
@@ -774,10 +776,22 @@ class DBManager:
 
     #Генератор SQL-запроса для поиска подстроки keyword в поле field в таблице table c необязательным упорядочиванием по orderfield
     def create_query_find_authors(self, *args, **kwargs):
-        lastname = msjp(kwargs['lastname'])
-        firstname = msjp(kwargs['firstname'])
-        middlename = msjp(kwargs['middlename'])
-        nickname = msjp(kwargs['nickname'])
+        try:
+            lastname = msjp(kwargs['lastname'])
+        except ValueError:
+            lastname = msjp("")
+        try:
+            firstname = msjp(kwargs['firstname'])
+        except ValueError:
+            firstname = msjp("")
+        try:
+            middlename = msjp(kwargs['middlename'])
+        except ValueError:
+            middlename = msjp("")
+        try:
+            nickname = msjp(kwargs['nickname'])
+        except ValueError:
+            nickname = msjp("")
 
         select_query = "SELECT uid FROM author WHERE lastname LIKE {0} AND firstname LIKE {1} AND middlename LIKE {2} AND nickname LIKE {3}".format(lastname, firstname, middlename, nickname)
         #print "select_query = ", select_query

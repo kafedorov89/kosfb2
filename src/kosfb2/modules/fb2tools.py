@@ -27,40 +27,46 @@ replace_spc_error_handler = lambda error: (u'_' * (error.end - error.start), err
 #Добавляем обработчик ошибок кодирования в библиотеку codecs
 codecs.register_error("fb2_replacer", replace_error_handler)
 
-def decodeUTF8str(str):
-    try:
-        result = str.decode('utf-8', 'ignore')
-        #print "decodestr.ENCODED with utf-8"
-        return result
-    except (UnicodeDecodeError, UnicodeEncodeError), e:
-        print e
-        return str
-
-def encodeUTF8str(str):
-    try:
-        result = str.encode('utf-8', 'ignore')
-        #print "decodestr.ENCODED with utf-8"
-        return result
-    except (UnicodeDecodeError, UnicodeEncodeError), e:
-        print e
+def decodeUTF8str(string):
+    if isinstance(string, str):
         try:
-            enc_detect = chardet.detect(str)
-            #print enc_detect['confidence']
-            enc = enc_detect['encoding']
-            #print enc
-
-            try:
-                result = str.decode(enc).encode('utf-8')
-                #print "decodestr.DECODED"
-                return result
-            except (UnicodeDecodeError, UnicodeEncodeError), e:
-                print e
-                raise#print e
-        except (UnicodeDecodeError, UnicodeEncodeError), e:
-            #result = str.decode('windows-1251', 'fb2_replacer')
-            #print "decodestr.CLEAR STR"
+            result = string.decode('utf-8', 'ignore')
+            #print "decodestr.ENCODED with utf-8"
+            return result
+        except (UnicodeDecodeError, UnicodeEncodeError, AttributeError), e:
             print e
-            return str
+            return string
+    else:
+        return ""
+
+def encodeUTF8str(string):
+    if isinstance(string, str):
+        try:
+            result = string.encode('utf-8', 'ignore')
+            #print "decodestring.ENCODED with utf-8"
+            return result
+        except (UnicodeDecodeError, UnicodeEncodeError, AttributeError), e:
+            print e
+            try:
+                enc_detect = chardet.detect(string)
+                #print enc_detect['confidence']
+                enc = enc_detect['encoding']
+                #print enc
+
+                try:
+                    result = string.decode(enc).encode('utf-8')
+                    #print "decodestring.DECODED"
+                    return result
+                except (UnicodeDecodeError, UnicodeEncodeError, AttributeError), e:
+                    print e
+                    raise#print e
+            except (UnicodeDecodeError, UnicodeEncodeError, AttributeError, TypeError), e:
+                #result = string.decode('windows-1251', 'fb2_replacer')
+                #print "decodestring.CLEAR STR"
+                print e
+                return string
+    else:
+        return ""
 
 #Функция добавляет пробел перед строкой если она не пустая
 def readaddspace(string):

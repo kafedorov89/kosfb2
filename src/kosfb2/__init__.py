@@ -23,15 +23,6 @@ config_file = open(path_to_config)
 
 def get_applications (mode, basename):
 
-    '''
-    #Вариант создания приложения с указанием routes
-    myapp = cherrybase.Application (name = __package__,
-                                    vhosts = ['127.0.0.1:3030', 'kosfb2:3030'],
-                                    config = config_file,
-                                    routes = [('/', webapp.BookShelf(), None)]
-                                    
-    '''
-
     #Вариант создания приложения без указания routes. В этом случае необходимо монтировать ресурсы приложения отдельно
     myapp = Application (name = __package__,
                                     vhosts = ['127.0.0.1:3030', 'kosfb2:3030', '192.168.1.185:3030'],
@@ -68,7 +59,13 @@ def get_applications (mode, basename):
              'tools.staticdir.dir' : 'books'},
         '/covers':
             {'tools.staticdir.on' : True,
-             'tools.staticdir.dir' : 'covers'}
+             'tools.staticdir.dir' : 'covers'},
+        '/js':
+            {'tools.staticdir.on' : True,
+             'tools.staticdir.dir' : 'js'},
+        '/logfiles':
+            {'tools.staticdir.on' : True,
+             'tools.staticdir.dir' : 'logfiles'}
     }
     myapp.app.config.update(static_config)
 

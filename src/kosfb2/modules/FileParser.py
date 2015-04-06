@@ -21,12 +21,14 @@ print "root = ", root
 #Тестовая функция для вывода полученных метаданных по книге
 class FileParser:
     def __init__(self, *args, **kwargs):
-        #Указываем общий рабочий каталог с фалами fb2, которые необходимо разобрать
-        self.fb2prepfolder = args[0]
-        #Указыаем каталог, куда будем складывать разобранные книги в архивах с обложками
-        self.staticfolder = args[1]
-        self.destfolder = args[2]
-        self.fb2errfolder = args[3]
+        try:
+            self.fb2prepfolder = args[0] #Каталог с найденными файлами fb2
+            self.destfolder = args[2] #Основной каталог библиотеки
+            self.fb2errfolder = args[3] #каталог для файлов fb2 содержащих ошибки
+            self.loggername = kwargs['loggername']
+        except (KeyError, ValueError):
+            raise
+
         self.callcount = 0
         self.errorcount = 0
 

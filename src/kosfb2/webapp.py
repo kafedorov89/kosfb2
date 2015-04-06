@@ -68,11 +68,8 @@ class BookShelf(Base):
                         }
 
             if chs.get('uploading'):
-                uploadparams = {'uploaderlog': chs.get('uploaderlog'),
-                                'uploading': 'True'}
-                print "before ", mainparams
+                uploadparams = {'uploading': 'True'}
                 mainparams = dict(mainparams, **uploadparams)
-                print "after ", mainparams
 
             return mainparams
         else:
@@ -80,12 +77,12 @@ class BookShelf(Base):
 
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
-    #
+
     @cherrypy.expose
+    @cherrypy.tools.jinja (template = 'viewuploadlog.html')
     def viewuploadlog(self):
-        with open(os.path.join('kosfb2', '__views__', 'viewuploadlog.html')) as htmlfile:
-            htmltext = htmlfile.read()
-        return htmltext
+        chs = cherrypy.session
+        return {'logfilename' : chs.get('uploaderlog')}
 
     @cherrypy.expose
     def getlog(self, tmpname):
@@ -112,7 +109,6 @@ class BookShelf(Base):
         chs['fullbooklist'] = self.randbook(20)
         chs['shortbooklist'] = []
         chs['message'] = u"Первый запуск"
-
 
         self.showbook()
         #cherrypy.response.cookie['user_name'] = 'TurboGears User' #Пишем cookies. Пример
@@ -218,25 +214,29 @@ class BookShelf(Base):
                 #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
                 #print "test uploadfile = ", uploadfile
 
-            fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
-                              staticfolder = os.path.join('kosfb2', '__static__'),
-                              destfolder = os.path.join('kosfb2', '__static__', 'books'))
-
-
-
             uploaderuid = str(uuid.uuid1())
 
-            oneuploadhnd = logging.FileHandler(os.path.join("kosfb2", "__static__", "uploadlogs", "".join((uploaderuid, ".log"))))
+            logfilepath = os.path.join('kosfb2', '__static__', 'logfiles', "%s.log" % (uploaderuid))
+            chs['uploaderlog'] = logfilepath
+
+            loggername = "".join(('upload_', uploaderuid))
+            oneuploadhnd = logging.FileHandler(logfilepath)
             oneuploadhnd.setLevel(logging.INFO)
-            oneuploadlogger = logging.getLogger("".join(('upload_', uploaderuid)))
+
+            oneuploadlogger = logging.getLogger(loggername)
             oneuploadlogger.addHandler(oneuploadhnd)
             oneuploadlogger.setLevel(logging.DEBUG)
+
+            fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
+                              staticfolder = os.path.join('kosfb2', '__static__'),
+                              destfolder = os.path.join('kosfb2', '__static__', 'books'),
+                              loggername = loggername)
 
             uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfoldername = uploaderuid)
             tq.put(uploader)
 
-            #chs['uploaderlog'] = os.path.join('kosfb2', '__static__', 'books', "%s.log" % (uploaderuid))
             chs['uploading'] = True
+            chs['message'] = u"Книги загружаются в библиотеку"
             raise cherrypy.HTTPRedirect("/main")
 
     #        except AttributeError:
@@ -247,33 +247,6 @@ class BookShelf(Base):
     #            raise cherrypy.HTTPRedirect("/main")
         else:
             raise cherrypy.HTTPRedirect("/index")
-
-    #Первый вариант добавления новых книг в библиотеку
-    @cherrypy.expose
-    def uploadbook1(self, *args, **kwargs):
-        chs = cherrypy.session
-
-        cherrypy.response.timeout = 3600
-        print "cherrypy.response.timeout = ", cherrypy.response.timeout
-        try:
-            uploadfile = cherrypy.request.params.get('uploadfiles') #Можно использовать встроенный в cherrypy метод получения параметров
-            #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
-            #print "test uploadfile = ", uploadfile
-
-            fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
-                              staticfolder = os.path.join('kosfb2', '__static__'),
-                              destfolder = os.path.join('kosfb2', '__static__', 'books'))
-
-            fu.upload(upload = True, files = uploadfile) #SQL inj
-            chs['message'] = u"Книги успешно загружены"
-#
-        except AttributeError:
-            chs['message'] = u"Книги не загружены. Что-то приключилось"
-        except KeyError:
-            chs['message'] = u"Книги не загружены. Что-то приключилось"
-
-        #Вызываем главную страницу с параметрами отображения элементов интерфейса и с нужным списком книг
-        raise cherrypy.HTTPRedirect("/main")
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -298,8 +271,8 @@ class BookShelf(Base):
         #pagebookcount - кол-во книг выводимых на страницу за один раз
         #pagenumb - порядковый номер страницы
 
-        start_pos = 0
-        end_pos = 0
+        #start_pos = 0
+        #end_pos = 0
         short_booklist = []
 
         #Вычисляем кол-во страниц, необходимое для отображения результатов поиска

@@ -18,9 +18,9 @@
 		</div>
 	</form>
 	
-	{% if uploading and uploaderlog is not none%}					
-	<a href="{{uploaderlog}}">
-		<br> Отчет о загрузке книг <br>
+	{% if uploading == 'True' %}					
+	<a href="/viewuploadlog">
+		<br> Просмотреть отчет о загрузке книг <br>
 	</a>
 	{% endif %}
 {% endblock %}

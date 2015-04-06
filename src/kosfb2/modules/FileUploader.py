@@ -24,10 +24,14 @@ class ErrorFileUploader(Exception):
 class FileUploader:
     def __init__(self, *args, **kwargs):
         #Указываем общий рабочий каталог для временного хранения каталогов для каждого разбора файлов
-        self.uploadfolder = kwargs['uploadfolder']
-        self.staticfolder = kwargs['staticfolder']
-        self.destfolder = kwargs['destfolder']
-        self.loggername = kwargs['loggername']
+        try:
+            self.uploadfolder = kwargs['uploadfolder']
+            self.staticfolder = kwargs['staticfolder']
+            self.destfolder = kwargs['destfolder']
+            self.loggername = kwargs['loggername']
+        except (KeyError, ValueError):
+            raise
+
         self.logger = logging.getLogger(self.loggername)
 
         errhand = logging.FileHandler('FileUploader.err')
@@ -83,8 +87,8 @@ class FileUploader:
         else:
             raise
 
-        oneuploadlogger = logging.getLogger(self.loggername)
-        oneuploadlogger.addHandler(logging.NullHandler())
+        self.logger = logging.getLogger(self.loggername)
+        self.logger.addHandler(logging.NullHandler())
 
         if doupload:
             print "UPLOAD --------------------------------------------------------------------------"
@@ -154,11 +158,11 @@ class FileUploader:
 
         if dofind:
             print "FIND --------------------------------------------------------------------------"
-            oneuploadlogger.info("Производится поиск fb2 файлов среди загруженных")
+            self.logger.info("Производится поиск fb2 файлов среди загруженных")
             #---------------------------------------------------------------------------------------------
 
             #Запускаем модуль FileFinder и находим все fb2 файлы внутри архива
-            ff = FileFinder(mainfolder)
+            ff = FileFinder(mainfolder, loggername = self.loggername)
             #try:
             ff.find(heapfolder, 0)
             doparse = True
@@ -167,13 +171,13 @@ class FileUploader:
             #    print "Ошибка. Поиск файлов fb2 не завершен правильно"
 
             #print "Всего было найдено %s fb2 файлов" % (ff.filecount,)
-            oneuploadlogger.info("Всего было найдено %s fb2 файлов" % (ff.filecount,))
+            self.logger.info("Всего было найдено %s fb2 файлов" % (ff.filecount,))
 
         if doparse:
             print "PARSE --------------------------------------------------------------------------"
-            oneuploadlogger.info("Производится разбор мата-данных в найденных fb2 файлах")
+            self.logger.info("Производится разбор мата-данных в найденных fb2 файлах")
             #Если поиск отработал успешно Запускаем модуль FileParser по списку найденных fb2 фалов
-            fp = FileParser(fb2prepfolder, self.staticfolder, self.destfolder, fb2errfolder)
+            fp = FileParser(fb2prepfolder, self.staticfolder, self.destfolder, fb2errfolder, loggername = self.loggername)
 
             fb2folder = os.path.join(mainfolder, 'fb2')
             fb2filelist = os.listdir(fb2folder)
@@ -181,9 +185,9 @@ class FileUploader:
                 filename = fb2filelist[i]
 
                 #Запускаем FileParser для одного файла и Добаляем метаданные по разобранному файлу в БД
-                if(dbm.add_book(fp.one_book_parser(os.path.join(fb2folder, filename)))):
+                if(dbm.add_book(fp.one_book_parser(os.path.join(fb2folder, filename)), self.loggername)):
                     #print "Добавление файла и метаданных произошло успешно"
-                    oneuploadlogger.info("Добавление файла №{0} и метаданных произошло успешно".format(i))
+                    self.logger.info("Добавление файла №{0} и метаданных произошло успешно".format(i))
                     #Переносим разобранные и добавленные файлы книг и обложек в общий каталог books
                     try:
                         prepbookfiles = os.listdir(fb2prepfolder)
@@ -197,13 +201,13 @@ class FileUploader:
                         print "Ошибка. Перенос архивов и обложек в конечный каталог books не произведен"
                 else:
                     #print "Ошибка. Файл и метаданные не добавлены"
-                    oneuploadlogger.info("Ошибка. Файл №{0} и метаданные не добавлены".format(i))
+                    self.logger.info("Ошибка. Файл №{0} и метаданные не добавлены".format(i))
 
             print "################################################################################"
             #print "Всего разобрано %s книг" % (fp.callcount,)
             #print "Из них ошибочных %s" % (fp.errorcount,)
-            oneuploadlogger.info("Всего разобрано %s книг" % (fp.callcount,))
-            oneuploadlogger.info("Из них ошибочных %s" % (fp.errorcount,))
+            self.logger.info("Всего разобрано %s книг" % (fp.callcount,))
+            self.logger.info("Из них ошибочных %s" % (fp.errorcount,))
 
 
             #Получаем список неразобранных файлов
