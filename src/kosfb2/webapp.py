@@ -90,9 +90,26 @@ class BookShelf(Base):
         u_tmpname = tmpname.encode("utf-8", "ignore")
         print u_tmpname
 
+        disablerefresh = False
+
         with open(u_tmpname) as logfile:
-            logtext = logfile.read()
-        return simplejson.dumps(dict(uploadinglogtext = logtext, disablerefresh = False))
+            logtextlines = logfile.readlines()
+
+            logtext = ""
+            for textline in logtextlines:
+                print "textline = ", textline
+                if(textline != "END\n"):
+                    logtext = "{}<br>{}".format(logtext, textline)
+                else:
+                    print "disablerefresh = True"
+                    disablerefresh = True
+
+
+#            laststring = logfile.readlines()[-1]
+#            print "laststring = ", laststring
+#            if laststring == "END":
+#                disablerefresh = True
+        return simplejson.dumps(dict(logtext = logtext, disablerefresh = disablerefresh))
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------
     #Main page (Основная страница)
@@ -187,7 +204,7 @@ class BookShelf(Base):
                                                                            pagenumb = pagenumb,
                                                                            pgnavstep = pgnavstep)
                 print chs['shortbooklist']
-                chs['message'] = u"Книги найдены"
+                #chs['message'] = u"Книги найдены"
             except: #ErrorGetShortBookList
                 chs['pagenumb'] = 0
                 chs['shortbooklist'] = []

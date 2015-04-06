@@ -9,9 +9,10 @@
 	        var disablerefresh = false;
 	        var refreshIntervalId;
 			var filename = "uploading.log"
-	       	
-	        function startloading(){
-	        	setInterval(loadlog, 1000); //refreshIntervalId = 
+	       	var refreshIntervalId
+	        
+			function startloading(){
+				refreshIntervalId = setInterval(loadlog, 1000); //refreshIntervalId = 
 	        }
 	        
 	        function loadlog(){
@@ -19,19 +20,21 @@
 				// post the form values via AJAX...
 				$.post('/getlog', {"tmpname": $('#tmpname').val()}, function(data){
 					// and set the title with the result
-					$("#uploadinglogtext").html(data['uploadinglogtext']);
+					logtext = data['logtext']
+					
 					disablerefresh = data['disablerefresh'];
-					});
-				
-	        	//if (disablerefresh == true) {
-	  			//	clearInterval(refreshIntervalId);
-	        	//}
+					if (disablerefresh == true) {
+						clearInterval(refreshIntervalId);
+		        	}
+					
+					$("#uploadinglogtext").html(logtext);
+				});
 	        }
        	</script>	
 </head>
 	<input type="hidden" id="tmpname" value='{{logfilename}}'/>
 	<body onload = "startloading()">
 		<h1 id="title">Лог файл</h1>
-	    <div id="uploadinglogtext">Здесь будет лог</div>
+	    <div id="uploadinglogtext"></div>
 	</body>
 </html>

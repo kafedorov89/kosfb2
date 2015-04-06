@@ -145,7 +145,6 @@ class FileUploader:
                     print "Получен 1 файл"
                     file = uploadfiles
 
-                    print "file.filename", file.filename
                     try:
                         fs(savepath = heapfolder,
                                            file = file.file,
@@ -208,6 +207,7 @@ class FileUploader:
             #print "Из них ошибочных %s" % (fp.errorcount,)
             self.logger.info("Всего разобрано %s книг" % (fp.callcount,))
             self.logger.info("Из них ошибочных %s" % (fp.errorcount,))
+            self.logger.info("END")
 
 
             #Получаем список неразобранных файлов
