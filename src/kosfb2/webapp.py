@@ -90,7 +90,7 @@ class BookShelf(Base):
         u_tmpname = tmpname.encode("utf-8", "ignore")
         print u_tmpname
 
-        with open(os.path.join('kosfb2', '__static__', 'logfiles', u_tmpname)) as logfile:
+        with open(u_tmpname) as logfile:
             logtext = logfile.read()
         return simplejson.dumps(dict(uploadinglogtext = logtext, disablerefresh = False))
 
@@ -202,49 +202,46 @@ class BookShelf(Base):
     @cherrypy.expose
     def uploadbook(self, *args, **kwargs):
         chs = cherrypy.session
-        #errmessage = u"Книги не загружены. Что-то приключилось"
+        errmessage = u"Книги не загружены. Что-то приключилось"
 
         if chs.get('wasindex'):
             cherrypy.response.timeout = 3600
             print "cherrypy.response.timeout = ", cherrypy.response.timeout
 
-    #        try:
+            try:
 
-            uploadfile = cherrypy.request.params.get('uploadfiles') #SQL inj #Можно использовать встроенный в cherrypy метод получения параметров
-                #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
-                #print "test uploadfile = ", uploadfile
+                uploadfile = cherrypy.request.params.get('uploadfiles') #SQL inj #Можно использовать встроенный в cherrypy метод получения параметров
+                    #uploadfile = kwargs['uploadfiles'] #Можно получать параметры из запроса с помощью стандартных именованных параметров метода
+                    #print "test uploadfile = ", uploadfile
 
-            uploaderuid = str(uuid.uuid1())
+                uploaderuid = str(uuid.uuid1())
 
-            logfilepath = os.path.join('kosfb2', '__static__', 'logfiles', "%s.log" % (uploaderuid))
-            chs['uploaderlog'] = logfilepath
+                logfilepath = os.path.join('kosfb2', '__static__', 'logfiles', "%s.log" % (uploaderuid))
+                chs['uploaderlog'] = logfilepath
 
-            loggername = "".join(('upload_', uploaderuid))
-            oneuploadhnd = logging.FileHandler(logfilepath)
-            oneuploadhnd.setLevel(logging.INFO)
+                loggername = "".join(('upload_', uploaderuid))
+                oneuploadhnd = logging.FileHandler(logfilepath)
+                oneuploadhnd.setLevel(logging.INFO)
 
-            oneuploadlogger = logging.getLogger(loggername)
-            oneuploadlogger.addHandler(oneuploadhnd)
-            oneuploadlogger.setLevel(logging.DEBUG)
+                oneuploadlogger = logging.getLogger(loggername)
+                oneuploadlogger.addHandler(oneuploadhnd)
+                oneuploadlogger.setLevel(logging.DEBUG)
 
-            fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
-                              staticfolder = os.path.join('kosfb2', '__static__'),
-                              destfolder = os.path.join('kosfb2', '__static__', 'books'),
-                              loggername = loggername)
+                fu = FileUploader(uploadfolder = os.path.join('kosfb2', 'uploadedbook'),
+                                  staticfolder = os.path.join('kosfb2', '__static__'),
+                                  destfolder = os.path.join('kosfb2', '__static__', 'books'),
+                                  loggername = loggername)
 
-            uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfoldername = uploaderuid)
-            tq.put(uploader)
+                uploader = functools.partial(fu.upload, doupload = True, files = uploadfile, tmpfoldername = uploaderuid)
+                tq.put(uploader)
 
-            chs['uploading'] = True
-            chs['message'] = u"Книги загружаются в библиотеку"
-            raise cherrypy.HTTPRedirect("/main")
+                chs['uploading'] = True
+                chs['message'] = u"Книги загружаются в библиотеку"
+                raise cherrypy.HTTPRedirect("/main")
 
-    #        except AttributeError:
-    #            chs['message'] = errmessage
-    #            raise cherrypy.HTTPRedirect("/main")
-    #        except KeyError:
-    #            chs['message'] = errmessage
-    #            raise cherrypy.HTTPRedirect("/main")
+            except (AttributeError, KeyError):
+                chs['message'] = errmessage
+                raise cherrypy.HTTPRedirect("/index")
         else:
             raise cherrypy.HTTPRedirect("/index")
 

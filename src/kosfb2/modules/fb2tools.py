@@ -28,16 +28,13 @@ replace_spc_error_handler = lambda error: (u'_' * (error.end - error.start), err
 codecs.register_error("fb2_replacer", replace_error_handler)
 
 def decodeUTF8str(string):
-    if isinstance(string, str):
-        try:
-            result = string.decode('utf-8', 'ignore')
-            #print "decodestr.ENCODED with utf-8"
-            return result
-        except (UnicodeDecodeError, UnicodeEncodeError, AttributeError), e:
-            print e
-            return string
-    else:
-        return ""
+    try:
+        result = string.decode('utf-8', 'ignore')
+        #print "decodestr.ENCODED with utf-8"
+        return result
+    except (UnicodeDecodeError, UnicodeEncodeError, AttributeError), e:
+        print e
+        return string
 
 def encodeUTF8str(string):
     if isinstance(string, str):

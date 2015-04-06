@@ -17,7 +17,7 @@
 	        function loadlog(){
 	        	// When the testform is submitted...
 				// post the form values via AJAX...
-				$.post('/getlog', {"tmpname": $("input[name=tmpname]:hidden")}, function(data){
+				$.post('/getlog', {"tmpname": $('#tmpname').val()}, function(data){
 					// and set the title with the result
 					$("#uploadinglogtext").html(data['uploadinglogtext']);
 					disablerefresh = data['disablerefresh'];
@@ -29,7 +29,7 @@
 	        }
        	</script>	
 </head>
-	<input type="hidden" name="tmpname" value='{{logfilename}}'/>
+	<input type="hidden" id="tmpname" value='{{logfilename}}'/>
 	<body onload = "startloading()">
 		<h1 id="title">Лог файл</h1>
 	    <div id="uploadinglogtext">Здесь будет лог</div>
